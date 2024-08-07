@@ -4,6 +4,15 @@ import (
 	"time"
 )
 
+type NodeType string
+
+const (
+	NodeTypeAccess = "access"
+	NodeTypeCloud  = "cloud"
+	NodeTypeBridge = "bridge"
+	NodeTypeRouter = "router"
+)
+
 type NodeProduct struct {
 	Product
 	CSPName         string `json:"cspName,omitempty"`
@@ -30,10 +39,10 @@ type Node struct {
 	AccountID      string               `json:"accountId"`
 	WorkspaceID    string               `json:"workspaceId"`
 	Name           string               `json:"name"`
-	State          string               `json:"administrativeState"`
+	State          AdministrativeState  `json:"administrativeState"`
 	DeployedAt     *time.Time           `json:"deployedAt,omitempty"`
 	Product        NodeProduct          `json:"product,omitempty"`
-	Type           string               `json:"type,omitempty"`
+	Type           NodeType             `json:"type,omitempty"`
 	ConnectionID   string               `json:"connectionId,omitempty"`
 	Port           *Port                `json:"port,omitempty"`
 	ProviderConfig *ProviderCloudConfig `json:"providerConfig,omitempty"`
@@ -45,11 +54,14 @@ type NodeResponse struct {
 	Data Node `json:"data"`
 }
 
+type AddProduct struct {
+	SKU string `json:"sku" binding:"required"`
+}
 type CreateNode struct {
-	Name           string               `json:"name"`
-	Type           string               `json:"type"`
-	Product        NodeProduct          `json:"product"`
-	ProviderConfig *ProviderCloudConfig `json:"providerConfig"`
+	Name           string               `json:"name" binding:"required"`
+	Type           string               `json:"type" binding:"required"`
+	Product        AddProduct           `json:"product" binding:"required"`
+	ProviderConfig *ProviderCloudConfig `json:"providerConfig" binding:"required_if=Type cloud"`
 }
 
 type UpdateNode struct {

@@ -2,6 +2,7 @@ package autonomisdk
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,11 +10,15 @@ import (
 	"github.com/intercloud/autonomi-sdk/models"
 )
 
-func (c *Client) CreateWorkspace(payload models.CreateWorkspace) (*models.Workspace, error) {
+func (c *Client) CreateWorkspace(ctx context.Context, payload models.CreateWorkspace) (*models.Workspace, error) {
 	body := new(bytes.Buffer)
 	err := json.NewEncoder(body).Encode(&payload)
 	if err != nil {
 		return nil, err
+	}
+
+	if errV := c.validate.StructCtx(ctx, payload); errV != nil {
+		return nil, errV
 	}
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/accounts/%s/workspaces", c.hostURL, c.accountID), body)
@@ -34,7 +39,7 @@ func (c *Client) CreateWorkspace(payload models.CreateWorkspace) (*models.Worksp
 	return &workspace.Data, nil
 }
 
-func (c *Client) GetWorkspace(workspaceID string) (*models.Workspace, error) {
+func (c *Client) GetWorkspace(ctx context.Context, workspaceID string) (*models.Workspace, error) {
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/accounts/%s/workspaces/%s", c.hostURL, c.accountID, workspaceID), nil)
 	if err != nil {
 		return nil, err
@@ -54,7 +59,7 @@ func (c *Client) GetWorkspace(workspaceID string) (*models.Workspace, error) {
 	return &workspace.Data, nil
 }
 
-func (c *Client) UpdateWorkspace(payload models.UpdateWorkspace, workspaceID string) (*models.Workspace, error) {
+func (c *Client) UpdateWorkspace(ctx context.Context, payload models.UpdateWorkspace, workspaceID string) (*models.Workspace, error) {
 	body := new(bytes.Buffer)
 	err := json.NewEncoder(body).Encode(&payload)
 	if err != nil {
@@ -79,7 +84,7 @@ func (c *Client) UpdateWorkspace(payload models.UpdateWorkspace, workspaceID str
 	return &workspace.Data, nil
 }
 
-func (c *Client) DeleteWorkspace(workspaceID string) error {
+func (c *Client) DeleteWorkspace(ctx context.Context, workspaceID string) error {
 	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/accounts/%s/workspaces/%s", c.hostURL, c.accountID, workspaceID), nil)
 	if err != nil {
 		return err
