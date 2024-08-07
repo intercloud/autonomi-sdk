@@ -20,7 +20,7 @@ jobs:
       
       - name: Install gocover-cobertura
         run: |
-            go get github.com/boumenot/gocover-cobertura && go install github.com/boumenot/gocover-cobertura
+            go install github.com/boumenot/gocover-cobertura
 
       # Install gotestfmt on the VM running the action.
       - name: Set up gotestfmt
