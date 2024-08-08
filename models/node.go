@@ -13,6 +13,10 @@ const (
 	NodeTypeRouter = "router"
 )
 
+func (nt NodeType) String() string {
+	return string(nt)
+}
+
 type NodeProduct struct {
 	Product
 	CSPName         string `json:"cspName,omitempty"`

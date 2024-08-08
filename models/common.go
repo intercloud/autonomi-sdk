@@ -25,3 +25,7 @@ const (
 	AdministrativeStateDeleteError     AdministrativeState = "delete_error"
 	AdministrativeStateDeleted         AdministrativeState = "deleted"
 )
+
+func (as AdministrativeState) String() string {
+	return string(as)
+}
