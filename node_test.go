@@ -63,6 +63,10 @@ var (
 			WorkspaceID: workspaceID,
 			Name:        "node_name",
 			State:       models.AdministrativeStateCreationError,
+			Error: &models.SupportError{
+				Code: "ERR_INTERNAL",
+				Msg:  "an internal error occured",
+			},
 		},
 	}
 
