@@ -54,6 +54,18 @@ var (
 		},
 	}
 
+	nodeCreationErrorResponse = models.NodeResponse{
+		Data: models.Node{
+			BaseModel: models.BaseModel{
+				ID: nodeID,
+			},
+			AccountID:   accountId,
+			WorkspaceID: workspaceID,
+			Name:        "node_name",
+			State:       models.AdministrativeStateCreationError,
+		},
+	}
+
 	nodeUpdateResponse = models.NodeResponse{
 		Data: models.Node{
 			BaseModel: models.BaseModel{
@@ -386,6 +398,60 @@ func TestGetNodeSuccessfully(t *testing.T) {
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusOK, nodeCreateResponse),
+		),
+	)
+
+	data, err := cli.GetNode(
+		context.Background(),
+		workspaceID,
+		nodeID.String(),
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+	g.Expect(*data).Should(Equal(result.Data))
+}
+
+func TestGetNodeCreationError(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	result := nodeCreationErrorResponse
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, nodeCreationErrorResponse),
 		),
 	)
 
