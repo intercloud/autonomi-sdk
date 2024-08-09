@@ -52,6 +52,7 @@ type Node struct {
 	ProviderConfig *ProviderCloudConfig `json:"providerConfig,omitempty"`
 	Vlan           int64                `json:"vlan,omitempty"`
 	DxconID        string               `json:"dxconId,omitempty"`
+	Error          *SupportError        `json:"error,omitempty"`
 }
 
 type NodeResponse struct {
