@@ -39,3 +39,23 @@ func (c *Client) CreateTransport(ctx context.Context, payload models.CreateTrans
 
 	return &transport.Data, err
 }
+
+func (c *Client) GetTransport(ctx context.Context, workspaceID, transportID string) (*models.Transport, error) {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/accounts/%s/workspaces/%s/transports/%s", c.hostURL, c.accountID, workspaceID, transportID), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.doRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	transport := models.TransportResponse{}
+	err = json.Unmarshal(resp, &transport)
+	if err != nil {
+		return nil, err
+	}
+
+	return &transport.Data, err
+}

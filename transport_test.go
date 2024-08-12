@@ -42,6 +42,35 @@ var (
 			},
 		},
 	}
+
+	transportCreateErrorResponse = models.TransportResponse{
+		Data: models.Transport{
+			BaseModel: models.BaseModel{
+				ID: transportID,
+			},
+			WorkspaceID: workspaceID,
+			Name:        "transport_name_error",
+			State:       models.AdministrativeStateCreationError,
+			Product: models.TransportProduct{
+				Product: models.Product{
+					Provider:  "EQUINIX",
+					Duration:  0,
+					Location:  "EQUINIX FR5",
+					Bandwidth: 100,
+					PriceNRC:  0,
+					PriceMRC:  0,
+					CostNRC:   0,
+					CostMRC:   0,
+					SKU:       "CEQUFR5100AWS",
+				},
+				LocationTo: "EQUINIX LD5",
+			},
+			Error: &models.SupportError{
+				Code: "ERR_INTERNAL",
+				Msg:  "an internal error occured",
+			},
+		},
+	}
 )
 
 func TestCreateTransportSuccessfully(t *testing.T) {
@@ -216,5 +245,165 @@ func TestCreateTransportFailedValidator(t *testing.T) {
 	)
 
 	g.Expect(err.Error()).Should(Equal("Key: 'CreateTransport.Product.SKU' Error:Field validation for 'SKU' failed on the 'required' tag"))
+	g.Expect(data).Should(BeNil())
+}
+
+func TestGetTransportSuccessfully(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	result := transportCreateResponse
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, transportCreateResponse),
+		),
+	)
+
+	data, err := cli.GetTransport(
+		context.Background(),
+		workspaceID,
+		transportID.String(),
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+	g.Expect(*data).Should(Equal(result.Data))
+}
+
+func TestGetTransportCreationError(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	result := transportCreateErrorResponse
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, transportCreateErrorResponse),
+		),
+	)
+
+	data, err := cli.GetTransport(
+		context.Background(),
+		workspaceID,
+		transportID.String(),
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+	g.Expect(*data).Should(Equal(result.Data))
+}
+
+func TestGetTransportNotFound(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusNotFound, nil),
+		),
+	)
+
+	data, err := cli.GetTransport(
+		context.Background(),
+		workspaceID,
+		nodeID.String(),
+	)
+
+	g.Expect(err).ShouldNot(BeNil())
 	g.Expect(data).Should(BeNil())
 }
