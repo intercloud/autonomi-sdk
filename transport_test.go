@@ -42,35 +42,6 @@ var (
 			},
 		},
 	}
-
-	transportCreateErrorResponse = models.TransportResponse{
-		Data: models.Transport{
-			BaseModel: models.BaseModel{
-				ID: transportID,
-			},
-			WorkspaceID: workspaceID,
-			Name:        "transport_name_error",
-			State:       models.AdministrativeStateCreationError,
-			Product: models.TransportProduct{
-				Product: models.Product{
-					Provider:  "EQUINIX",
-					Duration:  0,
-					Location:  "EQUINIX FR5",
-					Bandwidth: 100,
-					PriceNRC:  0,
-					PriceMRC:  0,
-					CostNRC:   0,
-					CostMRC:   0,
-					SKU:       "CEQUFR5100AWS",
-				},
-				LocationTo: "EQUINIX LD5",
-			},
-			Error: &models.SupportError{
-				Code: "ERR_INTERNAL",
-				Msg:  "an internal error occured",
-			},
-		},
-	}
 )
 
 func TestCreateTransportSuccessfully(t *testing.T) {
