@@ -60,7 +60,7 @@ func (c *Client) GetNode(ctx context.Context, workspaceID, nodeID string) (*mode
 	return &node.Data, err
 }
 
-func (c *Client) UpdateNode(ctx context.Context, payload models.UpdateNode, workspaceID, nodeID string) (*models.Node, error) {
+func (c *Client) UpdateNode(ctx context.Context, payload models.UpdateElement, workspaceID, nodeID string) (*models.Node, error) {
 	body := new(bytes.Buffer)
 	err := json.NewEncoder(body).Encode(&payload)
 	if err != nil {

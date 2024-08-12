@@ -9,28 +9,24 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/intercloud/autonomi-sdk/models"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
-)
 
-const (
-	workspaceID = "f6bee4c6-f7f0-493c-8e3c-5b6c6af6c2de"
+	"github.com/intercloud/autonomi-sdk/models"
 )
 
 var (
-	nodeID = uuid.MustParse("20ea29c9-f892-4aaf-8907-de79fa83e7bb")
+	transportID = uuid.MustParse("20ea29c9-f892-4aaf-8907-de79fa83e7bb")
 
-	nodeCreateResponse = models.NodeResponse{
-		Data: models.Node{
+	transportCreateResponse = models.TransportResponse{
+		Data: models.Transport{
 			BaseModel: models.BaseModel{
-				ID: nodeID,
+				ID: transportID,
 			},
 			WorkspaceID: workspaceID,
-			Name:        "node_name",
+			Name:        "transport_name",
 			State:       models.AdministrativeStateCreationPending,
-			Type:        models.NodeTypeCloud,
-			Product: models.NodeProduct{
+			Product: models.TransportProduct{
 				Product: models.Product{
 					Provider:  "EQUINIX",
 					Duration:  0,
@@ -42,25 +38,33 @@ var (
 					CostMRC:   0,
 					SKU:       "CEQUFR5100AWS",
 				},
-				CSPName:         "AWS",
-				CSPCity:         "Frankfurt",
-				CSPRegion:       "eu-central-1",
-				CSPNameUnderlay: "AWS",
-			},
-			ProviderConfig: &models.ProviderCloudConfig{
-				AccountID: "456789",
+				LocationTo: "EQUINIX LD5",
 			},
 		},
 	}
 
-	nodeCreationErrorResponse = models.NodeResponse{
-		Data: models.Node{
+	transportCreateErrorResponse = models.TransportResponse{
+		Data: models.Transport{
 			BaseModel: models.BaseModel{
-				ID: nodeID,
+				ID: transportID,
 			},
 			WorkspaceID: workspaceID,
-			Name:        "node_name",
+			Name:        "transport_name_error",
 			State:       models.AdministrativeStateCreationError,
+			Product: models.TransportProduct{
+				Product: models.Product{
+					Provider:  "EQUINIX",
+					Duration:  0,
+					Location:  "EQUINIX FR5",
+					Bandwidth: 100,
+					PriceNRC:  0,
+					PriceMRC:  0,
+					CostNRC:   0,
+					CostMRC:   0,
+					SKU:       "CEQUFR5100AWS",
+				},
+				LocationTo: "EQUINIX LD5",
+			},
 			Error: &models.SupportError{
 				Code: "ERR_INTERNAL",
 				Msg:  "an internal error occured",
@@ -68,16 +72,19 @@ var (
 		},
 	}
 
-	nodeUpdateResponse = models.NodeResponse{
-		Data: models.Node{
+	transportUpdateResponse = models.TransportResponse{
+		Data: models.Transport{
 			BaseModel: models.BaseModel{
-				ID: nodeID,
+				ID: transportID,
 			},
 			WorkspaceID: workspaceID,
-			Name:        "node_updated_name",
+			Name:        "transport_updated_name",
 			State:       models.AdministrativeStateDeployed,
-			Type:        models.NodeTypeCloud,
-			Product: models.NodeProduct{
+			TransportVlans: models.TransportVlans{
+				AVlan: 19,
+				ZVlan: 19,
+			},
+			Product: models.TransportProduct{
 				Product: models.Product{
 					Provider:  "EQUINIX",
 					Duration:  0,
@@ -89,27 +96,25 @@ var (
 					CostMRC:   0,
 					SKU:       "CEQUFR5100AWS",
 				},
-				CSPName:         "AWS",
-				CSPCity:         "Frankfurt",
-				CSPRegion:       "eu-central-1",
-				CSPNameUnderlay: "AWS",
+				LocationTo: "EQUINIX LD5",
 			},
-			ProviderConfig: &models.ProviderCloudConfig{
-				AccountID: "456789",
-			},
+			ConnectionID: "3091af46-3586-4cd1-bdbf-b569d2219823",
 		},
 	}
 
-	nodeDeleteResponse = models.NodeResponse{
-		Data: models.Node{
+	transportDeleteResponse = models.TransportResponse{
+		Data: models.Transport{
 			BaseModel: models.BaseModel{
-				ID: nodeID,
+				ID: transportID,
 			},
 			WorkspaceID: workspaceID,
-			Name:        "node_updated_name",
+			Name:        "transport_name",
 			State:       models.AdministrativeStateDeletePending,
-			Type:        models.NodeTypeCloud,
-			Product: models.NodeProduct{
+			TransportVlans: models.TransportVlans{
+				AVlan: 19,
+				ZVlan: 19,
+			},
+			Product: models.TransportProduct{
 				Product: models.Product{
 					Provider:  "EQUINIX",
 					Duration:  0,
@@ -121,19 +126,14 @@ var (
 					CostMRC:   0,
 					SKU:       "CEQUFR5100AWS",
 				},
-				CSPName:         "AWS",
-				CSPCity:         "Frankfurt",
-				CSPRegion:       "eu-central-1",
-				CSPNameUnderlay: "AWS",
+				LocationTo: "EQUINIX LD5",
 			},
-			ProviderConfig: &models.ProviderCloudConfig{
-				AccountID: "456789",
-			},
+			ConnectionID: "3091af46-3586-4cd1-bdbf-b569d2219823",
 		},
 	}
 )
 
-func TestCreateNodeSuccessfully(t *testing.T) {
+func TestCreateTransportSuccessfully(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -167,26 +167,22 @@ func TestCreateNodeSuccessfully(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := nodeCreateResponse
+	result := transportCreateResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes", accountId, workspaceID)),
+			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/transports", accountId, workspaceID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, transportCreateResponse),
 		),
 	)
 
-	data, err := cli.CreateNode(
+	data, err := cli.CreateTransport(
 		context.Background(),
-		models.CreateNode{
-			Name: "node_name",
-			Type: models.NodeTypeCloud,
+		models.CreateTransport{
+			Name: "transport_name",
 			Product: models.AddProduct{
 				SKU: "CEQUFR5100AWS",
-			},
-			ProviderConfig: &models.ProviderCloudConfig{
-				AccountID: "456789",
 			},
 		},
 		workspaceID,
@@ -196,7 +192,7 @@ func TestCreateNodeSuccessfully(t *testing.T) {
 	g.Expect(*data).Should(Equal(result.Data))
 }
 
-func TestCreateNodeForbidden(t *testing.T) {
+func TestCreateTransportForbidden(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -232,22 +228,18 @@ func TestCreateNodeForbidden(t *testing.T) {
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes", accountId, workspaceID)),
+			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/transports", accountId, workspaceID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusForbidden, nil),
 		),
 	)
 
-	data, err := cli.CreateNode(
+	data, err := cli.CreateTransport(
 		context.Background(),
-		models.CreateNode{
-			Name: "node_name",
-			Type: models.NodeTypeCloud,
+		models.CreateTransport{
+			Name: "transport_name",
 			Product: models.AddProduct{
 				SKU: "CEQUFR5100AWS",
-			},
-			ProviderConfig: &models.ProviderCloudConfig{
-				AccountID: "456789",
 			},
 		},
 		workspaceID,
@@ -257,7 +249,7 @@ func TestCreateNodeForbidden(t *testing.T) {
 	g.Expect(data).Should(BeNil())
 }
 
-func TestCreateNodeFailedValidator(t *testing.T) {
+func TestCreateTransportFailedValidator(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -291,73 +283,32 @@ func TestCreateNodeFailedValidator(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	data, err := cli.CreateNode(
+	data, err := cli.CreateTransport(
 		context.Background(),
-		models.CreateNode{
-			Type: models.NodeTypeCloud,
+		models.CreateTransport{
 			Product: models.AddProduct{
 				SKU: "CEQUFR5100AWS",
-			},
-			ProviderConfig: &models.ProviderCloudConfig{
-				AccountID: "456789",
 			},
 		},
 		workspaceID,
 	)
 
-	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.Name' Error:Field validation for 'Name' failed on the 'required' tag"))
+	g.Expect(err.Error()).Should(Equal("Key: 'CreateTransport.Name' Error:Field validation for 'Name' failed on the 'required' tag"))
 	g.Expect(data).Should(BeNil())
 
-	data, err = cli.CreateNode(
+	data, err = cli.CreateTransport(
 		context.Background(),
-		models.CreateNode{
+		models.CreateTransport{
 			Name: "node_name",
-			Product: models.AddProduct{
-				SKU: "CEQUFR5100AWS",
-			},
-			ProviderConfig: &models.ProviderCloudConfig{
-				AccountID: "456789",
-			},
 		},
 		workspaceID,
 	)
 
-	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.Type' Error:Field validation for 'Type' failed on the 'required' tag"))
-	g.Expect(data).Should(BeNil())
-
-	data, err = cli.CreateNode(
-		context.Background(),
-		models.CreateNode{
-			Name:    "node_name",
-			Type:    models.NodeTypeCloud,
-			Product: models.AddProduct{},
-			ProviderConfig: &models.ProviderCloudConfig{
-				AccountID: "456789",
-			},
-		},
-		workspaceID,
-	)
-
-	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.Product.SKU' Error:Field validation for 'SKU' failed on the 'required' tag"))
-	g.Expect(data).Should(BeNil())
-
-	data, err = cli.CreateNode(
-		context.Background(),
-		models.CreateNode{
-			Name: "node_name",
-			Type: models.NodeTypeCloud,
-			Product: models.AddProduct{
-				SKU: "CEQUFR5100AWS",
-			},
-		},
-		workspaceID,
-	)
-
-	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.ProviderConfig' Error:Field validation for 'ProviderConfig' failed on the 'required_if' tag"))
+	g.Expect(err.Error()).Should(Equal("Key: 'CreateTransport.Product.SKU' Error:Field validation for 'SKU' failed on the 'required' tag"))
 	g.Expect(data).Should(BeNil())
 }
 
-func TestGetNodeSuccessfully(t *testing.T) {
+func TestGetTransportSuccessfully(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -391,27 +342,27 @@ func TestGetNodeSuccessfully(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := nodeCreateResponse
+	result := transportCreateResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, nodeCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, transportCreateResponse),
 		),
 	)
 
-	data, err := cli.GetNode(
+	data, err := cli.GetTransport(
 		context.Background(),
 		workspaceID,
-		nodeID.String(),
+		transportID.String(),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 	g.Expect(*data).Should(Equal(result.Data))
 }
 
-func TestGetNodeCreationError(t *testing.T) {
+func TestGetTransportCreationError(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -445,27 +396,27 @@ func TestGetNodeCreationError(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := nodeCreationErrorResponse
+	result := transportCreateErrorResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, nodeCreationErrorResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, transportCreateErrorResponse),
 		),
 	)
 
-	data, err := cli.GetNode(
+	data, err := cli.GetTransport(
 		context.Background(),
 		workspaceID,
-		nodeID.String(),
+		transportID.String(),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 	g.Expect(*data).Should(Equal(result.Data))
 }
 
-func TestGetNodeNotFound(t *testing.T) {
+func TestGetTransportNotFound(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -501,13 +452,13 @@ func TestGetNodeNotFound(t *testing.T) {
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusNotFound, nil),
 		),
 	)
 
-	data, err := cli.GetNode(
+	data, err := cli.GetTransport(
 		context.Background(),
 		workspaceID,
 		nodeID.String(),
@@ -517,7 +468,7 @@ func TestGetNodeNotFound(t *testing.T) {
 	g.Expect(data).Should(BeNil())
 }
 
-func TestUpdateNodeSuccessfully(t *testing.T) {
+func TestUpdateTransportSuccessfully(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -551,30 +502,30 @@ func TestUpdateNodeSuccessfully(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := nodeUpdateResponse
+	result := transportUpdateResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodPatch, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyRequest(http.MethodPatch, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeUpdateResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, transportUpdateResponse),
 		),
 	)
 
-	data, err := cli.UpdateNode(
+	data, err := cli.UpdateTransport(
 		context.Background(),
 		models.UpdateElement{
-			Name: "node_updated_name",
+			Name: "transport_updated_name",
 		},
 		workspaceID,
-		nodeID.String(),
+		transportID.String(),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 	g.Expect(*data).Should(Equal(result.Data))
 }
 
-func TestUpdateNodeNotFound(t *testing.T) {
+func TestUpdateTransportNotFound(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -610,26 +561,26 @@ func TestUpdateNodeNotFound(t *testing.T) {
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodPatch, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyRequest(http.MethodPatch, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusNotFound, nil),
 		),
 	)
 
-	data, err := cli.UpdateNode(
+	data, err := cli.UpdateTransport(
 		context.Background(),
 		models.UpdateElement{
-			Name: "node_updated_name",
+			Name: "transport_updated_name",
 		},
 		workspaceID,
-		nodeID.String(),
+		transportID.String(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
 	g.Expect(data).Should(BeNil())
 }
 
-func TestDeleteNodeSuccessfully(t *testing.T) {
+func TestDeleteTransportSuccessfully(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -663,27 +614,27 @@ func TestDeleteNodeSuccessfully(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := nodeDeleteResponse
+	result := transportDeleteResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, transportDeleteResponse),
 		),
 	)
 
-	data, err := cli.DeleteNode(
+	data, err := cli.DeleteTransport(
 		context.Background(),
 		workspaceID,
-		nodeID.String(),
+		transportID.String(),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 	g.Expect(*data).Should(Equal(result.Data))
 }
 
-func TestDeleteNodeForbidden(t *testing.T) {
+func TestDeleteTransportForbidden(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -719,16 +670,16 @@ func TestDeleteNodeForbidden(t *testing.T) {
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusForbidden, nil),
 		),
 	)
 
-	data, err := cli.DeleteNode(
+	data, err := cli.DeleteTransport(
 		context.Background(),
 		workspaceID,
-		nodeID.String(),
+		transportID.String(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
