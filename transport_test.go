@@ -71,6 +71,36 @@ var (
 			},
 		},
 	}
+
+	transportUpdateResponse = models.TransportResponse{
+		Data: models.Transport{
+			BaseModel: models.BaseModel{
+				ID: transportID,
+			},
+			WorkspaceID: workspaceID,
+			Name:        "transport_updated_name",
+			State:       models.AdministrativeStateDeployed,
+			TransportVlans: models.TransportVlans{
+				AVlan: 19,
+				ZVlan: 19,
+			},
+			Product: models.TransportProduct{
+				Product: models.Product{
+					Provider:  "EQUINIX",
+					Duration:  0,
+					Location:  "EQUINIX FR5",
+					Bandwidth: 100,
+					PriceNRC:  0,
+					PriceMRC:  0,
+					CostNRC:   0,
+					CostMRC:   0,
+					SKU:       "CEQUFR5100AWS",
+				},
+				LocationTo: "EQUINIX LD5",
+			},
+			ConnectionID: "3091af46-3586-4cd1-bdbf-b569d2219823",
+		},
+	}
 )
 
 func TestCreateTransportSuccessfully(t *testing.T) {
@@ -402,6 +432,118 @@ func TestGetTransportNotFound(t *testing.T) {
 		context.Background(),
 		workspaceID,
 		nodeID.String(),
+	)
+
+	g.Expect(err).ShouldNot(BeNil())
+	g.Expect(data).Should(BeNil())
+}
+
+func TestUpdateTransportSuccessfully(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	result := transportUpdateResponse
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodPatch, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusAccepted, transportUpdateResponse),
+		),
+	)
+
+	data, err := cli.UpdateTransport(
+		context.Background(),
+		models.UpdateElement{
+			Name: "transport_updated_name",
+		},
+		workspaceID,
+		transportID.String(),
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+	g.Expect(*data).Should(Equal(result.Data))
+}
+
+func TestUpdateTransportNotFound(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodPatch, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusNotFound, nil),
+		),
+	)
+
+	data, err := cli.UpdateTransport(
+		context.Background(),
+		models.UpdateElement{
+			Name: "transport_updated_name",
+		},
+		workspaceID,
+		transportID.String(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())

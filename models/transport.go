@@ -23,7 +23,6 @@ type Transport struct {
 	IsLocal        bool                `json:"isLocal"`
 	Product        TransportProduct    `json:"product,omitempty"`
 	ConnectionID   string              `json:"connectionId,omitempty"`
-	Port           *Port               `json:"port,omitempty"`
 }
 
 type CreateTransport struct {

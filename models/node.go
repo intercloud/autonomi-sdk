@@ -67,7 +67,3 @@ type CreateNode struct {
 	Product        AddProduct           `json:"product" binding:"required"`
 	ProviderConfig *ProviderCloudConfig `json:"providerConfig" binding:"required_if=Type cloud"`
 }
-
-type UpdateNode struct {
-	Name string `json:"name"`
-}

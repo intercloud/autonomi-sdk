@@ -29,3 +29,7 @@ const (
 func (as AdministrativeState) String() string {
 	return string(as)
 }
+
+type UpdateElement struct {
+	Name string `json:"name"`
+}

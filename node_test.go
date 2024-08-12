@@ -563,7 +563,7 @@ func TestUpdateNodeSuccessfully(t *testing.T) {
 
 	data, err := cli.UpdateNode(
 		context.Background(),
-		models.UpdateNode{
+		models.UpdateElement{
 			Name: "node_updated_name",
 		},
 		workspaceID,
@@ -618,7 +618,7 @@ func TestUpdateNodeNotFound(t *testing.T) {
 
 	data, err := cli.UpdateNode(
 		context.Background(),
-		models.UpdateNode{
+		models.UpdateElement{
 			Name: "node_updated_name",
 		},
 		workspaceID,
