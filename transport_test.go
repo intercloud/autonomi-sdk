@@ -101,6 +101,36 @@ var (
 			ConnectionID: "3091af46-3586-4cd1-bdbf-b569d2219823",
 		},
 	}
+
+	transportDeleteResponse = models.TransportResponse{
+		Data: models.Transport{
+			BaseModel: models.BaseModel{
+				ID: transportID,
+			},
+			WorkspaceID: workspaceID,
+			Name:        "transport_name",
+			State:       models.AdministrativeStateDeletePending,
+			TransportVlans: models.TransportVlans{
+				AVlan: 19,
+				ZVlan: 19,
+			},
+			Product: models.TransportProduct{
+				Product: models.Product{
+					Provider:  "EQUINIX",
+					Duration:  0,
+					Location:  "EQUINIX FR5",
+					Bandwidth: 100,
+					PriceNRC:  0,
+					PriceMRC:  0,
+					CostNRC:   0,
+					CostMRC:   0,
+					SKU:       "CEQUFR5100AWS",
+				},
+				LocationTo: "EQUINIX LD5",
+			},
+			ConnectionID: "3091af46-3586-4cd1-bdbf-b569d2219823",
+		},
+	}
 )
 
 func TestCreateTransportSuccessfully(t *testing.T) {
@@ -542,6 +572,112 @@ func TestUpdateTransportNotFound(t *testing.T) {
 		models.UpdateElement{
 			Name: "transport_updated_name",
 		},
+		workspaceID,
+		transportID.String(),
+	)
+
+	g.Expect(err).ShouldNot(BeNil())
+	g.Expect(data).Should(BeNil())
+}
+
+func TestDeleteTransportSuccessfully(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	result := transportDeleteResponse
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusAccepted, transportDeleteResponse),
+		),
+	)
+
+	data, err := cli.DeleteTransport(
+		context.Background(),
+		workspaceID,
+		transportID.String(),
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+	g.Expect(*data).Should(Equal(result.Data))
+}
+
+func TestDeleteTransportForbidden(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusForbidden, nil),
+		),
+	)
+
+	data, err := cli.DeleteTransport(
+		context.Background(),
 		workspaceID,
 		transportID.String(),
 	)
