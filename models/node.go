@@ -40,7 +40,6 @@ type ProviderCloudConfig struct {
 
 type Node struct {
 	BaseModel
-	AccountID      string               `json:"accountId"`
 	WorkspaceID    string               `json:"workspaceId"`
 	Name           string               `json:"name"`
 	State          AdministrativeState  `json:"administrativeState"`

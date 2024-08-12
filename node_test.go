@@ -26,7 +26,6 @@ var (
 			BaseModel: models.BaseModel{
 				ID: nodeID,
 			},
-			AccountID:   accountId,
 			WorkspaceID: workspaceID,
 			Name:        "node_name",
 			State:       models.AdministrativeStateCreationPending,
@@ -59,7 +58,6 @@ var (
 			BaseModel: models.BaseModel{
 				ID: nodeID,
 			},
-			AccountID:   accountId,
 			WorkspaceID: workspaceID,
 			Name:        "node_name",
 			State:       models.AdministrativeStateCreationError,
@@ -75,7 +73,6 @@ var (
 			BaseModel: models.BaseModel{
 				ID: nodeID,
 			},
-			AccountID:   accountId,
 			WorkspaceID: workspaceID,
 			Name:        "node_updated_name",
 			State:       models.AdministrativeStateDeployed,
@@ -108,7 +105,6 @@ var (
 			BaseModel: models.BaseModel{
 				ID: nodeID,
 			},
-			AccountID:   accountId,
 			WorkspaceID: workspaceID,
 			Name:        "node_updated_name",
 			State:       models.AdministrativeStateDeletePending,
