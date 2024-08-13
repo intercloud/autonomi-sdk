@@ -12,18 +12,18 @@ import (
 	"github.com/intercloud/autonomi-sdk/models"
 )
 
-func checkAttachmentAdministrativeState(ctx context.Context, c *Client, workspaceID, attachmentID string, state models.AdministrativeState) bool {
+func checkAttachmentAdministrativeState(ctx context.Context, c *Client, workspaceID, attachmentID string, state models.AdministrativeState) (*models.Attachment, bool) {
 	attachment, err := c.GetAttachment(ctx, workspaceID, attachmentID)
 	if err != nil {
 		// if wanted state is deleted and the attachment is in this state, api has returned 404
 		if state == models.AdministrativeStateDeleted && strings.Contains(err.Error(), "status: 404") {
-			return true
+			return nil, true
 		}
 		log.Printf("an error occurs when getting attachment, err: %s" + err.Error())
-		return false
+		return nil, false
 	}
 
-	return attachment.State == state
+	return attachment, attachment.State == state
 }
 
 // CreateAttachment creates asynchronously an attachment. The attachment returned will depend of the administrative state passed in options.
@@ -69,11 +69,12 @@ func (c *Client) CreateAttachment(ctx context.Context, payload models.CreateAtta
 		return nil, err
 	}
 
-	if !c.WaitForAdministrativeState(ctx, workspaceID, attachment.Data.ID.String(), attachmentOptions.administrativeState, checkAttachmentAdministrativeState) {
+	success, attachmentPolled := WaitForAdministrativeState(ctx, c, workspaceID, attachment.Data.ID.String(), attachmentOptions.administrativeState, checkAttachmentAdministrativeState)
+	if !success {
 		return nil, fmt.Errorf("Attachment did not reach '%s' state in time.", attachmentOptions.administrativeState)
 	}
 
-	return &attachment.Data, nil
+	return attachmentPolled, nil
 }
 
 func (c *Client) GetAttachment(ctx context.Context, workspaceID, attachmentID string) (*models.Attachment, error) {
@@ -129,9 +130,10 @@ func (c *Client) DeleteAttachment(ctx context.Context, workspaceID, attachmentID
 		return nil, err
 	}
 
-	if !c.WaitForAdministrativeState(ctx, workspaceID, attachment.Data.ID.String(), attachmentOptions.administrativeState, checkAttachmentAdministrativeState) {
+	success, attachmentPolled := WaitForAdministrativeState(ctx, c, workspaceID, attachment.Data.ID.String(), attachmentOptions.administrativeState, checkAttachmentAdministrativeState)
+	if !success {
 		return nil, fmt.Errorf("Attachment did not reach '%s' state in time.", attachmentOptions.administrativeState)
 	}
 
-	return &attachment.Data, err
+	return attachmentPolled, nil
 }

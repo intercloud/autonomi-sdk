@@ -12,17 +12,17 @@ import (
 	"github.com/intercloud/autonomi-sdk/models"
 )
 
-func checkTransportAdministrativeState(ctx context.Context, c *Client, workspaceID, transportID string, state models.AdministrativeState) bool {
+func checkTransportAdministrativeState(ctx context.Context, c *Client, workspaceID, transportID string, state models.AdministrativeState) (*models.Transport, bool) {
 	transport, err := c.GetTransport(ctx, workspaceID, transportID)
 	if err != nil {
 		// if wanted state is deleted and the transport is in this state, api has returned 404
 		if state == models.AdministrativeStateDeleted && strings.Contains(err.Error(), "status: 404") {
-			return true
+			return nil, true
 		}
 		log.Printf("an error occurs when getting transport, err: %s" + err.Error())
-		return false
+		return nil, false
 	}
-	return transport.State == state
+	return transport, transport.State == state
 }
 
 // CreateTransport creates asynchronously a transport. The transport returned will depend of the administrative state passed in options.
@@ -68,11 +68,12 @@ func (c *Client) CreateTransport(ctx context.Context, payload models.CreateTrans
 		return nil, err
 	}
 
-	if !c.WaitForAdministrativeState(ctx, workspaceID, transport.Data.ID.String(), transportOptions.administrativeState, checkTransportAdministrativeState) {
-		return nil, fmt.Errorf("Node did not reach '%s' state in time.", transportOptions.administrativeState)
+	success, transportPolled := WaitForAdministrativeState(ctx, c, workspaceID, transport.Data.ID.String(), transportOptions.administrativeState, checkTransportAdministrativeState)
+	if !success {
+		return nil, fmt.Errorf("Transport did not reach '%s' state in time.", transportOptions.administrativeState)
 	}
 
-	return &transport.Data, err
+	return transportPolled, nil
 }
 
 func (c *Client) GetTransport(ctx context.Context, workspaceID, transportID string) (*models.Transport, error) {
@@ -151,9 +152,10 @@ func (c *Client) DeleteTransport(ctx context.Context, workspaceID, transportID s
 		return nil, err
 	}
 
-	if !c.WaitForAdministrativeState(ctx, workspaceID, transport.Data.ID.String(), transportOptions.administrativeState, checkTransportAdministrativeState) {
+	success, transportPolled := WaitForAdministrativeState(ctx, c, workspaceID, transport.Data.ID.String(), transportOptions.administrativeState, checkTransportAdministrativeState)
+	if !success {
 		return nil, fmt.Errorf("Transport did not reach '%s' state in time.", transportOptions.administrativeState)
 	}
 
-	return &transport.Data, err
+	return transportPolled, nil
 }
