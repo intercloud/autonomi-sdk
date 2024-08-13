@@ -1,0 +1,80 @@
+name: continuous-integration
+
+on:
+  pull_request:
+    branches:
+      - feat/**
+      - fix/**
+      - hotfix/**
+      - main
+  push:
+    branches:
+      - main
+
+env:
+  NODE_VERSION: 22.6.0
+  GO_VERSION: v1.22.0
+  GOLANGCI_LINT_VERSION: v1.59
+  GOPRIVATE: github.com/intercloud
+
+jobs:
+  markdown-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: install markdownlint-cli
+        run: npm install -g markdownlint-cli
+      - name: markdownlint
+        run: markdownlint '**/*.md'
+
+  go-mod-tidy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: set up gitconfig
+        uses: ./.github/actions/setup-gitconfig
+        with:
+          ORG_GITHUB_TOKEN: ${{ secrets.ORG_GITHUB_TOKEN }}
+      - name: go mod tidy
+        run: go mod tidy
+
+  golangci-lint:
+    runs-on: ubuntu-latest
+    needs:
+      - go-mod-tidy
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          args: './...'
+
+  go-test:
+    runs-on: ubuntu-latest
+    needs:
+      - golangci-lint
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: go test
+        run: go test ./... -v
