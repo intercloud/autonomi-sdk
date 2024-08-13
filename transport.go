@@ -10,7 +10,15 @@ import (
 	"github.com/intercloud/autonomi-sdk/models"
 )
 
-func (c *Client) CreateTransport(ctx context.Context, payload models.CreateTransport, workspaceID string) (*models.Transport, error) {
+func waitForTransportAdministrativeState(ctx context.Context, c *Client, workspaceID, transportID string, state models.AdministrativeState) bool {
+	transport, err := c.GetTransport(ctx, workspaceID, transportID)
+	if err != nil {
+		return false
+	}
+	return transport.State == state
+}
+
+func (c *Client) CreateTransport(ctx context.Context, payload models.CreateTransport, workspaceID string, options ...OptionElement) (*models.Transport, error) {
 	body := new(bytes.Buffer)
 	err := json.NewEncoder(body).Encode(&payload)
 	if err != nil {
@@ -19,6 +27,15 @@ func (c *Client) CreateTransport(ctx context.Context, payload models.CreateTrans
 
 	if errV := c.validate.StructCtx(ctx, payload); errV != nil {
 		return nil, errV
+	}
+
+	transportOptions := &elementOptions{}
+	for _, o := range options {
+		o(transportOptions)
+	}
+
+	if transportOptions.administrativeState == "" {
+		transportOptions.administrativeState = models.AdministrativeStateDeployed
 	}
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/accounts/%s/workspaces/%s/transports", c.hostURL, c.accountID, workspaceID), body)
@@ -35,6 +52,10 @@ func (c *Client) CreateTransport(ctx context.Context, payload models.CreateTrans
 	err = json.Unmarshal(resp, &transport)
 	if err != nil {
 		return nil, err
+	}
+
+	if !c.WaitForAdministrativeState(ctx, workspaceID, transport.Data.ID.String(), transportOptions.administrativeState, waitForTransportAdministrativeState) {
+		return nil, fmt.Errorf("Node did not reach '%s' state in time.", transportOptions.administrativeState)
 	}
 
 	return &transport.Data, err

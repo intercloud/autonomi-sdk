@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	. "github.com/onsi/gomega"
@@ -26,6 +27,31 @@ var (
 			WorkspaceID: workspaceID,
 			Name:        "transport_name",
 			State:       models.AdministrativeStateCreationPending,
+			Product: models.TransportProduct{
+				Product: models.Product{
+					Provider:  "EQUINIX",
+					Duration:  0,
+					Location:  "EQUINIX FR5",
+					Bandwidth: 100,
+					PriceNRC:  0,
+					PriceMRC:  0,
+					CostNRC:   0,
+					CostMRC:   0,
+					SKU:       "CEQUFR5100AWS",
+				},
+				LocationTo: "EQUINIX LD5",
+			},
+		},
+	}
+
+	transportDeployedResponse = models.TransportResponse{
+		Data: models.Transport{
+			BaseModel: models.BaseModel{
+				ID: transportID,
+			},
+			WorkspaceID: workspaceID,
+			Name:        "transport_name",
+			State:       models.AdministrativeStateDeployed,
 			Product: models.TransportProduct{
 				Product: models.Product{
 					Provider:  "EQUINIX",
@@ -165,6 +191,8 @@ func TestCreateTransportSuccessfully(t *testing.T) {
 		}),
 		WithPersonalAccessToken(personalAccessToken),
 	)
+	cli.maxRetry = 4
+	cli.retryInterval = 2 * time.Second
 	g.Expect(err).ShouldNot(HaveOccurred())
 
 	result := transportCreateResponse
@@ -174,6 +202,84 @@ func TestCreateTransportSuccessfully(t *testing.T) {
 			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/transports", accountId, workspaceID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusAccepted, transportCreateResponse),
+		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, transportCreateResponse),
+		),
+	)
+
+	data, err := cli.CreateTransport(
+		context.Background(),
+		models.CreateTransport{
+			Name: "transport_name",
+			Product: models.AddProduct{
+				SKU: "CEQUFR5100AWS",
+			},
+		},
+		workspaceID,
+		WithAdministrativeState(models.AdministrativeStateCreationPending),
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+	g.Expect(*data).Should(Equal(result.Data))
+}
+
+func TestCreateTransportWaitForStateDeployed(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	cli.maxRetry = 4
+	cli.retryInterval = 2 * time.Second
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	result := transportCreateResponse
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/transports", accountId, workspaceID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusAccepted, transportCreateResponse),
+		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, transportCreateResponse),
+		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, transportDeployedResponse),
 		),
 	)
 

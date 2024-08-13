@@ -20,6 +20,10 @@ type Client struct {
 	accountID           uuid.UUID
 
 	validate *validator.Validate
+
+	// used for polling element's state
+	retryInterval time.Duration
+	maxRetry      int
 }
 
 type OptionClient func(*Client)
@@ -57,8 +61,10 @@ func WithPersonalAccessToken(token string) OptionClient {
 
 func initClient(opts ...OptionClient) *Client {
 	client := &Client{
-		httpClient: &http.Client{},
-		hostURL:    &url.URL{},
+		httpClient:    &http.Client{},
+		hostURL:       &url.URL{},
+		retryInterval: 20 * time.Second,
+		maxRetry:      30,
 	}
 
 	for _, o := range opts {
