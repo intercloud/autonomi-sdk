@@ -13,6 +13,11 @@ import (
 	"github.com/google/uuid"
 )
 
+type pollElement struct {
+	retryInterval time.Duration
+	maxRetry      int
+}
+
 type Client struct {
 	hostURL             *url.URL
 	httpClient          *http.Client
@@ -21,9 +26,7 @@ type Client struct {
 
 	validate *validator.Validate
 
-	// used for polling element's state
-	retryInterval time.Duration
-	maxRetry      int
+	poll pollElement
 }
 
 type OptionClient func(*Client)
@@ -61,10 +64,12 @@ func WithPersonalAccessToken(token string) OptionClient {
 
 func initClient(opts ...OptionClient) *Client {
 	client := &Client{
-		httpClient:    &http.Client{},
-		hostURL:       &url.URL{},
-		retryInterval: 20 * time.Second,
-		maxRetry:      30,
+		httpClient: &http.Client{},
+		hostURL:    &url.URL{},
+		poll: pollElement{
+			retryInterval: 20 * time.Second,
+			maxRetry:      30,
+		},
 	}
 
 	for _, o := range opts {
