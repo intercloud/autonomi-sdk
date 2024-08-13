@@ -40,9 +40,9 @@ func WithAdministrativeState(administrativeState models.AdministrativeState) Opt
 	}
 }
 
-type CheckForAdministrativeStateSignature func(ctx context.Context, c *Client, workspaceID, elementID string, state models.AdministrativeState) bool
+type CheckForAdministrativeState func(ctx context.Context, c *Client, workspaceID, elementID string, state models.AdministrativeState) bool
 
-func (c *Client) WaitForAdministrativeState(ctx context.Context, workspaceID, elementID string, state models.AdministrativeState, funcToCall CheckForAdministrativeStateSignature) bool {
+func (c *Client) WaitForAdministrativeState(ctx context.Context, workspaceID, elementID string, state models.AdministrativeState, funcToCall CheckForAdministrativeState) bool {
 	for i := 0; i < c.poll.maxRetry; i++ {
 		// check if element is in required administrative state, if not the loop continues until it reaches it or it timeout
 		if funcToCall(ctx, c, workspaceID, elementID, state) {
