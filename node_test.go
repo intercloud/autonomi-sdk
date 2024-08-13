@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/intercloud/autonomi-sdk/models"
@@ -29,6 +30,38 @@ var (
 			WorkspaceID: workspaceID,
 			Name:        "node_name",
 			State:       models.AdministrativeStateCreationPending,
+			Type:        models.NodeTypeCloud,
+			Product: models.NodeProduct{
+				Product: models.Product{
+					Provider:  "EQUINIX",
+					Duration:  0,
+					Location:  "EQUINIX FR5",
+					Bandwidth: 100,
+					PriceNRC:  0,
+					PriceMRC:  0,
+					CostNRC:   0,
+					CostMRC:   0,
+					SKU:       "CEQUFR5100AWS",
+				},
+				CSPName:         "AWS",
+				CSPCity:         "Frankfurt",
+				CSPRegion:       "eu-central-1",
+				CSPNameUnderlay: "AWS",
+			},
+			ProviderConfig: &models.ProviderCloudConfig{
+				AccountID: "456789",
+			},
+		},
+	}
+
+	nodeDeployedResponse = models.NodeResponse{
+		Data: models.Node{
+			BaseModel: models.BaseModel{
+				ID: nodeID,
+			},
+			WorkspaceID: workspaceID,
+			Name:        "node_name",
+			State:       models.AdministrativeStateDeployed,
 			Type:        models.NodeTypeCloud,
 			Product: models.NodeProduct{
 				Product: models.Product{
@@ -165,6 +198,7 @@ func TestCreateNodeSuccessfully(t *testing.T) {
 		}),
 		WithPersonalAccessToken(personalAccessToken),
 	)
+
 	g.Expect(err).ShouldNot(HaveOccurred())
 
 	result := nodeCreateResponse
@@ -174,6 +208,89 @@ func TestCreateNodeSuccessfully(t *testing.T) {
 			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes", accountId, workspaceID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeCreateResponse),
+		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, nodeCreateResponse),
+		),
+	)
+
+	data, err := cli.CreateNode(
+		context.Background(),
+		models.CreateNode{
+			Name: "node_name",
+			Type: models.NodeTypeCloud,
+			Product: models.AddProduct{
+				SKU: "CEQUFR5100AWS",
+			},
+			ProviderConfig: &models.ProviderCloudConfig{
+				AccountID: "456789",
+			},
+		},
+		workspaceID,
+		WithAdministrativeState(models.AdministrativeStateCreationPending),
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+	g.Expect(*data).Should(Equal(result.Data))
+}
+
+func TestCreateNodeWaitForStateDeployed(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	cli.poll.maxRetry = 2
+	cli.poll.retryInterval = 1 * time.Second
+
+	result := nodeCreateResponse
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes", accountId, workspaceID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeCreateResponse),
+		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, nodeCreateResponse),
+		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, nodeDeployedResponse),
 		),
 	)
 
@@ -194,6 +311,142 @@ func TestCreateNodeSuccessfully(t *testing.T) {
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 	g.Expect(*data).Should(Equal(result.Data))
+}
+
+func TestCreateNodeWaitForStateTimeout(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	cli.poll.maxRetry = 1
+	cli.poll.retryInterval = 1 * time.Second
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes", accountId, workspaceID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeCreateResponse),
+		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, nodeCreateResponse),
+		),
+	)
+
+	_, err = cli.CreateNode(
+		context.Background(),
+		models.CreateNode{
+			Name: "node_name",
+			Type: models.NodeTypeCloud,
+			Product: models.AddProduct{
+				SKU: "CEQUFR5100AWS",
+			},
+			ProviderConfig: &models.ProviderCloudConfig{
+				AccountID: "456789",
+			},
+		},
+		workspaceID,
+	)
+
+	g.Expect(err).ShouldNot(BeNil())
+}
+
+func TestCreateNodePollNotFound(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	cli.poll.maxRetry = 1
+	cli.poll.retryInterval = 1 * time.Second
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes", accountId, workspaceID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeCreateResponse),
+		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusNotFound, nil),
+		),
+	)
+
+	_, err = cli.CreateNode(
+		context.Background(),
+		models.CreateNode{
+			Name: "node_name",
+			Type: models.NodeTypeCloud,
+			Product: models.AddProduct{
+				SKU: "CEQUFR5100AWS",
+			},
+			ProviderConfig: &models.ProviderCloudConfig{
+				AccountID: "456789",
+			},
+		},
+		workspaceID,
+	)
+
+	g.Expect(err).ShouldNot(BeNil())
 }
 
 func TestCreateNodeForbidden(t *testing.T) {
@@ -354,6 +607,60 @@ func TestCreateNodeFailedValidator(t *testing.T) {
 	)
 
 	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.ProviderConfig' Error:Field validation for 'ProviderConfig' failed on the 'required_if' tag"))
+	g.Expect(data).Should(BeNil())
+}
+
+func TestCreateNodeWrongAdministrativeState(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	data, err := cli.CreateNode(
+		context.Background(),
+		models.CreateNode{
+			Name: "node_name",
+			Type: models.NodeTypeCloud,
+			Product: models.AddProduct{
+				SKU: "CEQUFR5100AWS",
+			},
+			ProviderConfig: &models.ProviderCloudConfig{
+				AccountID: "456789",
+			},
+		},
+		workspaceID,
+		WithAdministrativeState(models.AdministrativeStateDeleteProceed),
+	)
+
+	g.Expect(err.Error()).Should(Equal(ErrCreationAdministrativeState.Error()))
 	g.Expect(data).Should(BeNil())
 }
 
@@ -671,6 +978,75 @@ func TestDeleteNodeSuccessfully(t *testing.T) {
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeDeleteResponse),
 		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, nodeDeleteResponse),
+		),
+	)
+
+	data, err := cli.DeleteNode(
+		context.Background(),
+		workspaceID,
+		nodeID.String(),
+		WithAdministrativeState(models.AdministrativeStateDeletePending),
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+	g.Expect(*data).Should(Equal(result.Data))
+}
+
+func TestDeleteNodeWaitForStateDeleted(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	cli.poll.maxRetry = 1
+	cli.poll.retryInterval = 1 * time.Second
+
+	result := nodeDeleteResponse
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeDeleteResponse),
+		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusNotFound, nil),
+		),
 	)
 
 	data, err := cli.DeleteNode(
@@ -681,6 +1057,66 @@ func TestDeleteNodeSuccessfully(t *testing.T) {
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 	g.Expect(*data).Should(Equal(result.Data))
+}
+
+func TestDeleteNodeWaitForStateTimeout(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	cli.poll.maxRetry = 1
+	cli.poll.retryInterval = 1 * time.Second
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeDeleteResponse),
+		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, nodeDeleteResponse),
+		),
+	)
+
+	_, err = cli.DeleteNode(
+		context.Background(),
+		workspaceID,
+		nodeID.String(),
+	)
+
+	g.Expect(err).ShouldNot(BeNil())
 }
 
 func TestDeleteNodeForbidden(t *testing.T) {
@@ -732,5 +1168,50 @@ func TestDeleteNodeForbidden(t *testing.T) {
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
+	g.Expect(data).Should(BeNil())
+}
+
+func TestDeleteNodeWrongAdministrativeState(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	data, err := cli.DeleteNode(
+		context.Background(),
+		workspaceID,
+		nodeID.String(),
+		WithAdministrativeState(models.AdministrativeStateCreationPending),
+	)
+
+	g.Expect(err.Error()).Should(Equal(ErrDeletionAdministrativeState.Error()))
 	g.Expect(data).Should(BeNil())
 }
