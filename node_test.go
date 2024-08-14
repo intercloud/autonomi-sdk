@@ -133,7 +133,7 @@ var (
 		},
 	}
 
-	nodeDeleteResponse = models.NodeResponse{
+	nodeDeletePendingResponse = models.NodeResponse{
 		Data: models.Node{
 			BaseModel: models.BaseModel{
 				ID: nodeID,
@@ -163,6 +163,10 @@ var (
 				AccountID: "456789",
 			},
 		},
+	}
+
+	nodeDeleteResponse = models.NodeResponse{
+		Data: models.Node{},
 	}
 )
 
@@ -274,7 +278,7 @@ func TestCreateNodeWaitForStateDeployed(t *testing.T) {
 	cli.poll.maxRetry = 2
 	cli.poll.retryInterval = 1 * time.Second
 
-	result := nodeCreateResponse
+	result := nodeDeployedResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
@@ -970,18 +974,18 @@ func TestDeleteNodeSuccessfully(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := nodeDeleteResponse
+	result := nodeDeletePendingResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeDeletePendingResponse),
 		),
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, nodeDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, nodeDeletePendingResponse),
 		),
 	)
 
@@ -1040,7 +1044,7 @@ func TestDeleteNodeWaitForStateDeleted(t *testing.T) {
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeDeletePendingResponse),
 		),
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
@@ -1101,12 +1105,12 @@ func TestDeleteNodeWaitForStateTimeout(t *testing.T) {
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeDeletePendingResponse),
 		),
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, nodeDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, nodeDeletePendingResponse),
 		),
 	)
 
@@ -1204,6 +1208,14 @@ func TestDeleteNodeWrongAdministrativeState(t *testing.T) {
 		WithPersonalAccessToken(personalAccessToken),
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeDeleteResponse),
+		),
+	)
 
 	data, err := cli.DeleteNode(
 		context.Background(),

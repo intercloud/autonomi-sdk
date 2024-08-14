@@ -69,7 +69,7 @@ func (c *Client) CreateAttachment(ctx context.Context, payload models.CreateAtta
 		return nil, err
 	}
 
-	success, attachmentPolled := WaitForAdministrativeState(ctx, c, workspaceID, attachment.Data.ID.String(), attachmentOptions.administrativeState, checkAttachmentAdministrativeState)
+	attachmentPolled, success := WaitForAdministrativeState(ctx, c, workspaceID, attachment.Data.ID.String(), attachmentOptions.administrativeState, checkAttachmentAdministrativeState)
 	if !success {
 		return nil, fmt.Errorf("Attachment did not reach '%s' state in time.", attachmentOptions.administrativeState)
 	}
@@ -130,7 +130,7 @@ func (c *Client) DeleteAttachment(ctx context.Context, workspaceID, attachmentID
 		return nil, err
 	}
 
-	success, attachmentPolled := WaitForAdministrativeState(ctx, c, workspaceID, attachment.Data.ID.String(), attachmentOptions.administrativeState, checkAttachmentAdministrativeState)
+	attachmentPolled, success := WaitForAdministrativeState(ctx, c, workspaceID, attachment.Data.ID.String(), attachmentOptions.administrativeState, checkAttachmentAdministrativeState)
 	if !success {
 		return nil, fmt.Errorf("Attachment did not reach '%s' state in time.", attachmentOptions.administrativeState)
 	}

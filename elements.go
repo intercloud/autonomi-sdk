@@ -41,7 +41,11 @@ func WithAdministrativeState(administrativeState models.AdministrativeState) Opt
 
 // type CheckForAdministrativeState func(ctx context.Context, c *Client, workspaceID, elementID string, state models.AdministrativeState) bool
 
-func WaitForAdministrativeState[T any](ctx context.Context, client *Client, workspaceID, elementID string, state models.AdministrativeState, funcToCall func(context.Context, *Client, string, string, models.AdministrativeState) (T, bool)) (bool, T) {
+type Element interface {
+	*models.Node | *models.Transport | *models.Attachment
+}
+
+func WaitForAdministrativeState[T Element](ctx context.Context, client *Client, workspaceID, elementID string, state models.AdministrativeState, funcToCall func(context.Context, *Client, string, string, models.AdministrativeState) (T, bool)) (T, bool) {
 	var lastElement T
 	for i := 0; i < client.poll.maxRetry; i++ {
 		// Retrieve the element and check if it is in the required administrative state
@@ -49,10 +53,10 @@ func WaitForAdministrativeState[T any](ctx context.Context, client *Client, work
 		lastElement = element
 
 		if isInDesiredState {
-			return true, lastElement
+			return lastElement, true
 		}
 		time.Sleep(client.poll.retryInterval)
 	}
 
-	return false, lastElement
+	return lastElement, false
 }

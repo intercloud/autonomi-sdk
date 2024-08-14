@@ -128,7 +128,7 @@ var (
 		},
 	}
 
-	transportDeleteResponse = models.TransportResponse{
+	transportDeletePendingResponse = models.TransportResponse{
 		Data: models.Transport{
 			BaseModel: models.BaseModel{
 				ID: transportID,
@@ -156,6 +156,10 @@ var (
 			},
 			ConnectionID: "3091af46-3586-4cd1-bdbf-b569d2219823",
 		},
+	}
+
+	transportDeleteResponse = models.TransportResponse{
+		Data: models.Transport{},
 	}
 )
 
@@ -263,7 +267,7 @@ func TestCreateTransportWaitForStateDeployed(t *testing.T) {
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := transportCreateResponse
+	result := transportDeployedResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
@@ -898,18 +902,18 @@ func TestDeleteTransportSuccessfully(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := transportDeleteResponse
+	result := transportDeletePendingResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, transportDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, transportDeletePendingResponse),
 		),
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, transportDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, transportDeletePendingResponse),
 		),
 	)
 
@@ -967,7 +971,7 @@ func TestDeleteTransportWaitForStateDeleted(t *testing.T) {
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, transportDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, transportDeletePendingResponse),
 		),
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
@@ -1027,12 +1031,12 @@ func TestDeleteTransportWaitForStateTimeout(t *testing.T) {
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, transportDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, transportDeletePendingResponse),
 		),
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, transportDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, transportDeletePendingResponse),
 		),
 	)
 

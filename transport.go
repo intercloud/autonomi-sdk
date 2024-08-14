@@ -68,7 +68,7 @@ func (c *Client) CreateTransport(ctx context.Context, payload models.CreateTrans
 		return nil, err
 	}
 
-	success, transportPolled := WaitForAdministrativeState(ctx, c, workspaceID, transport.Data.ID.String(), transportOptions.administrativeState, checkTransportAdministrativeState)
+	transportPolled, success := WaitForAdministrativeState(ctx, c, workspaceID, transport.Data.ID.String(), transportOptions.administrativeState, checkTransportAdministrativeState)
 	if !success {
 		return nil, fmt.Errorf("Transport did not reach '%s' state in time.", transportOptions.administrativeState)
 	}
@@ -152,7 +152,7 @@ func (c *Client) DeleteTransport(ctx context.Context, workspaceID, transportID s
 		return nil, err
 	}
 
-	success, transportPolled := WaitForAdministrativeState(ctx, c, workspaceID, transport.Data.ID.String(), transportOptions.administrativeState, checkTransportAdministrativeState)
+	transportPolled, success := WaitForAdministrativeState(ctx, c, workspaceID, transport.Data.ID.String(), transportOptions.administrativeState, checkTransportAdministrativeState)
 	if !success {
 		return nil, fmt.Errorf("Transport did not reach '%s' state in time.", transportOptions.administrativeState)
 	}

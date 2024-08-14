@@ -51,7 +51,21 @@ var (
 			},
 		},
 	}
-	attachmentDeleteResponse = models.AttachmentResponse{
+
+	attachmentDeployedResponse = models.AttachmentResponse{
+		Data: models.Attachment{
+			BaseModel: models.BaseModel{
+				ID: attachmentID,
+			},
+			WorkspaceID: workspaceID,
+			NodeID:      nodeID.String(),
+			TransportID: transportID.String(),
+			State:       models.AdministrativeStateDeployed,
+			Side:        aSide,
+		},
+	}
+
+	attachmentDeletePendingResponse = models.AttachmentResponse{
 		Data: models.Attachment{
 			BaseModel: models.BaseModel{
 				ID: attachmentID,
@@ -61,6 +75,10 @@ var (
 			TransportID: transportID.String(),
 			State:       models.AdministrativeStateDeletePending,
 		},
+	}
+
+	attachmentDeleteResponse = models.AttachmentResponse{
+		Data: models.Attachment{},
 	}
 )
 
@@ -166,7 +184,7 @@ func TestCreateAttachmentWaitForStateDeployed(t *testing.T) {
 	cli.poll.maxRetry = 2
 	cli.poll.retryInterval = 1 * time.Second
 
-	result := attachmentCreateResponse
+	result := attachmentDeployedResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
@@ -182,7 +200,7 @@ func TestCreateAttachmentWaitForStateDeployed(t *testing.T) {
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, nodeDeployedResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, attachmentDeployedResponse),
 		),
 	)
 
@@ -677,18 +695,18 @@ func TestDeleteAttachmentSuccessfully(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := attachmentDeleteResponse
+	result := attachmentDeletePendingResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, attachmentDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, attachmentDeletePendingResponse),
 		),
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, attachmentDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, attachmentDeletePendingResponse),
 		),
 	)
 
@@ -747,7 +765,7 @@ func TestDeleteAttachmentWaitForStateDeleted(t *testing.T) {
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, attachmentDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, attachmentDeletePendingResponse),
 		),
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
@@ -808,12 +826,12 @@ func TestDeleteAttachmentWaitForStateTimeout(t *testing.T) {
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, attachmentDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, attachmentDeletePendingResponse),
 		),
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, attachmentDeleteResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, attachmentDeletePendingResponse),
 		),
 	)
 

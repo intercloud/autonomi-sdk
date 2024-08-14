@@ -69,7 +69,7 @@ func (c *Client) CreateNode(ctx context.Context, payload models.CreateNode, work
 		return nil, err
 	}
 
-	success, nodePolled := WaitForAdministrativeState(ctx, c, workspaceID, node.Data.ID.String(), cloudOptions.administrativeState, checkNodeAdministrativeState)
+	nodePolled, success := WaitForAdministrativeState(ctx, c, workspaceID, node.Data.ID.String(), cloudOptions.administrativeState, checkNodeAdministrativeState)
 	if !success {
 		return nil, fmt.Errorf("Node did not reach '%s' state in time.", cloudOptions.administrativeState)
 	}
@@ -156,7 +156,7 @@ func (c *Client) DeleteNode(ctx context.Context, workspaceID, nodeID string, opt
 		return nil, err
 	}
 
-	success, nodePolled := WaitForAdministrativeState(ctx, c, workspaceID, node.Data.ID.String(), cloudOptions.administrativeState, checkNodeAdministrativeState)
+	nodePolled, success := WaitForAdministrativeState(ctx, c, workspaceID, node.Data.ID.String(), cloudOptions.administrativeState, checkNodeAdministrativeState)
 	if !success {
 		return nil, fmt.Errorf("Node did not reach '%s' state in time.", cloudOptions.administrativeState)
 	}
