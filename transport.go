@@ -157,5 +157,12 @@ func (c *Client) DeleteTransport(ctx context.Context, workspaceID, transportID s
 		return nil, fmt.Errorf("Transport did not reach '%s' state in time.", transportOptions.administrativeState)
 	}
 
+	// If the transport was deleted and we were waiting for the "deleted" state,
+	// transportPolled will be nil. To prevent a panic when dereferencing, we
+	// assign an empty structure.
+	if transportPolled == nil {
+		transportPolled = &models.Transport{}
+	}
+
 	return transportPolled, nil
 }

@@ -69,12 +69,12 @@ func (c *Client) CreateNode(ctx context.Context, payload models.CreateNode, work
 		return nil, err
 	}
 
-	success, nodePoled := WaitForAdministrativeState(ctx, c, workspaceID, node.Data.ID.String(), cloudOptions.administrativeState, checkNodeAdministrativeState)
+	success, nodePolled := WaitForAdministrativeState(ctx, c, workspaceID, node.Data.ID.String(), cloudOptions.administrativeState, checkNodeAdministrativeState)
 	if !success {
 		return nil, fmt.Errorf("Node did not reach '%s' state in time.", cloudOptions.administrativeState)
 	}
 
-	return nodePoled, nil
+	return nodePolled, nil
 }
 
 func (c *Client) GetNode(ctx context.Context, workspaceID, nodeID string) (*models.Node, error) {
@@ -156,10 +156,17 @@ func (c *Client) DeleteNode(ctx context.Context, workspaceID, nodeID string, opt
 		return nil, err
 	}
 
-	success, nodePoled := WaitForAdministrativeState(ctx, c, workspaceID, node.Data.ID.String(), cloudOptions.administrativeState, checkNodeAdministrativeState)
+	success, nodePolled := WaitForAdministrativeState(ctx, c, workspaceID, node.Data.ID.String(), cloudOptions.administrativeState, checkNodeAdministrativeState)
 	if !success {
 		return nil, fmt.Errorf("Node did not reach '%s' state in time.", cloudOptions.administrativeState)
 	}
 
-	return nodePoled, nil
+	// If the node was deleted and we were waiting for the "deleted" state,
+	// nodePolled will be nil. To prevent a panic when dereferencing, we
+	// assign an empty structure.
+	if nodePolled == nil {
+		nodePolled = &models.Node{}
+	}
+
+	return nodePolled, nil
 }

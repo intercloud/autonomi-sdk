@@ -135,5 +135,12 @@ func (c *Client) DeleteAttachment(ctx context.Context, workspaceID, attachmentID
 		return nil, fmt.Errorf("Attachment did not reach '%s' state in time.", attachmentOptions.administrativeState)
 	}
 
+	// If the attachment was deleted and we were waiting for the "deleted" state,
+	// attachmentPolled will be nil. To prevent a panic when dereferencing, we
+	// assign an empty structure.
+	if attachmentPolled == nil {
+		attachmentPolled = &models.Attachment{}
+	}
+
 	return attachmentPolled, nil
 }
