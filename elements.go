@@ -11,7 +11,6 @@ import (
 type elementOptions struct {
 	administrativeState models.AdministrativeState
 }
-
 type OptionElement func(*elementOptions)
 
 var validCreationAdministrativeStates = map[models.AdministrativeState]struct{}{
