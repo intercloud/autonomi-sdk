@@ -12,18 +12,18 @@ import (
 	"github.com/intercloud/autonomi-sdk/models"
 )
 
-func checkNodeAdministrativeState(ctx context.Context, c *Client, workspaceID, nodeID string, state models.AdministrativeState) bool {
+func checkNodeAdministrativeState(ctx context.Context, c *Client, workspaceID, nodeID string, state models.AdministrativeState) (*models.Node, bool) {
 	node, err := c.GetNode(ctx, workspaceID, nodeID)
 	if err != nil {
 		// if wanted state is deleted and the node is in this state, api has returned 404
 		if state == models.AdministrativeStateDeleted && strings.Contains(err.Error(), "status: 404") {
-			return true
+			return nil, true
 		}
 		log.Printf("an error occurs when getting node, err: %s" + err.Error())
-		return false
+		return nil, false
 	}
 
-	return node.State == state
+	return node, node.State == state
 }
 
 // CreateNode creates asynchronously a cloud node. The node returned will depend of the administrative state passed in options.
@@ -69,11 +69,12 @@ func (c *Client) CreateNode(ctx context.Context, payload models.CreateNode, work
 		return nil, err
 	}
 
-	if !c.WaitForAdministrativeState(ctx, workspaceID, node.Data.ID.String(), cloudOptions.administrativeState, checkNodeAdministrativeState) {
+	nodePolled, success := WaitForAdministrativeState(ctx, c, workspaceID, node.Data.ID.String(), cloudOptions.administrativeState, checkNodeAdministrativeState)
+	if !success {
 		return nil, fmt.Errorf("Node did not reach '%s' state in time.", cloudOptions.administrativeState)
 	}
 
-	return &node.Data, nil
+	return nodePolled, nil
 }
 
 func (c *Client) GetNode(ctx context.Context, workspaceID, nodeID string) (*models.Node, error) {
@@ -155,9 +156,17 @@ func (c *Client) DeleteNode(ctx context.Context, workspaceID, nodeID string, opt
 		return nil, err
 	}
 
-	if !c.WaitForAdministrativeState(ctx, workspaceID, node.Data.ID.String(), cloudOptions.administrativeState, checkNodeAdministrativeState) {
+	nodePolled, success := WaitForAdministrativeState(ctx, c, workspaceID, node.Data.ID.String(), cloudOptions.administrativeState, checkNodeAdministrativeState)
+	if !success {
 		return nil, fmt.Errorf("Node did not reach '%s' state in time.", cloudOptions.administrativeState)
 	}
 
-	return &node.Data, err
+	// If the node was deleted and we were waiting for the "deleted" state,
+	// nodePolled will be nil. To prevent a panic when dereferencing, we
+	// assign an empty structure.
+	if nodePolled == nil {
+		nodePolled = &models.Node{}
+	}
+
+	return nodePolled, nil
 }

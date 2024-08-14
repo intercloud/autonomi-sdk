@@ -46,7 +46,4 @@ Autonomi SDK allows to :
 - Create, Read, Update and Delete a **Workspace**
 - Create, Read, Update and Delete a **Node**
 - Create, Read, Update and Delete a **Transport**
-
-### To Do
-
-- Create, Read, Update and Delete a **Attachment**
+- Create, Read and Delete an **Attachment**

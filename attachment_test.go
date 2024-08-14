@@ -10,87 +10,41 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/intercloud/autonomi-sdk/models"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
+)
 
-	"github.com/intercloud/autonomi-sdk/models"
+const (
+	aSide = "A"
+	zSide = "Z"
 )
 
 var (
-	transportID = uuid.MustParse("20ea29c9-f892-4aaf-8907-de79fa83e7bb")
+	attachmentID = uuid.MustParse("20ea29c9-f892-4aaf-8907-de79fa83e7bb")
 
-	transportCreateResponse = models.TransportResponse{
-		Data: models.Transport{
+	attachmentCreateResponse = models.AttachmentResponse{
+		Data: models.Attachment{
 			BaseModel: models.BaseModel{
-				ID: transportID,
+				ID: attachmentID,
 			},
 			WorkspaceID: workspaceID,
-			Name:        "transport_name",
+			NodeID:      nodeID.String(),
+			TransportID: transportID.String(),
 			State:       models.AdministrativeStateCreationPending,
-			Product: models.TransportProduct{
-				Product: models.Product{
-					Provider:  "EQUINIX",
-					Duration:  0,
-					Location:  "EQUINIX FR5",
-					Bandwidth: 100,
-					PriceNRC:  0,
-					PriceMRC:  0,
-					CostNRC:   0,
-					CostMRC:   0,
-					SKU:       "CEQUFR5100AWS",
-				},
-				LocationTo: "EQUINIX LD5",
-			},
+			Side:        aSide,
 		},
 	}
 
-	transportDeployedResponse = models.TransportResponse{
-		Data: models.Transport{
+	attachmentCreationErrorResponse = models.AttachmentResponse{
+		Data: models.Attachment{
 			BaseModel: models.BaseModel{
-				ID: transportID,
+				ID: attachmentID,
 			},
 			WorkspaceID: workspaceID,
-			Name:        "transport_name",
-			State:       models.AdministrativeStateDeployed,
-			Product: models.TransportProduct{
-				Product: models.Product{
-					Provider:  "EQUINIX",
-					Duration:  0,
-					Location:  "EQUINIX FR5",
-					Bandwidth: 100,
-					PriceNRC:  0,
-					PriceMRC:  0,
-					CostNRC:   0,
-					CostMRC:   0,
-					SKU:       "CEQUFR5100AWS",
-				},
-				LocationTo: "EQUINIX LD5",
-			},
-		},
-	}
-
-	transportCreateErrorResponse = models.TransportResponse{
-		Data: models.Transport{
-			BaseModel: models.BaseModel{
-				ID: transportID,
-			},
-			WorkspaceID: workspaceID,
-			Name:        "transport_name_error",
+			NodeID:      nodeID.String(),
+			TransportID: transportID.String(),
 			State:       models.AdministrativeStateCreationError,
-			Product: models.TransportProduct{
-				Product: models.Product{
-					Provider:  "EQUINIX",
-					Duration:  0,
-					Location:  "EQUINIX FR5",
-					Bandwidth: 100,
-					PriceNRC:  0,
-					PriceMRC:  0,
-					CostNRC:   0,
-					CostMRC:   0,
-					SKU:       "CEQUFR5100AWS",
-				},
-				LocationTo: "EQUINIX LD5",
-			},
 			Error: &models.SupportError{
 				Code: "ERR_INTERNAL",
 				Msg:  "an internal error occured",
@@ -98,72 +52,37 @@ var (
 		},
 	}
 
-	transportUpdateResponse = models.TransportResponse{
-		Data: models.Transport{
+	attachmentDeployedResponse = models.AttachmentResponse{
+		Data: models.Attachment{
 			BaseModel: models.BaseModel{
-				ID: transportID,
+				ID: attachmentID,
 			},
 			WorkspaceID: workspaceID,
-			Name:        "transport_updated_name",
+			NodeID:      nodeID.String(),
+			TransportID: transportID.String(),
 			State:       models.AdministrativeStateDeployed,
-			TransportVlans: models.TransportVlans{
-				AVlan: 19,
-				ZVlan: 19,
-			},
-			Product: models.TransportProduct{
-				Product: models.Product{
-					Provider:  "EQUINIX",
-					Duration:  0,
-					Location:  "EQUINIX FR5",
-					Bandwidth: 100,
-					PriceNRC:  0,
-					PriceMRC:  0,
-					CostNRC:   0,
-					CostMRC:   0,
-					SKU:       "CEQUFR5100AWS",
-				},
-				LocationTo: "EQUINIX LD5",
-			},
-			ConnectionID: "3091af46-3586-4cd1-bdbf-b569d2219823",
+			Side:        aSide,
 		},
 	}
 
-	transportDeletePendingResponse = models.TransportResponse{
-		Data: models.Transport{
+	attachmentDeletePendingResponse = models.AttachmentResponse{
+		Data: models.Attachment{
 			BaseModel: models.BaseModel{
-				ID: transportID,
+				ID: attachmentID,
 			},
 			WorkspaceID: workspaceID,
-			Name:        "transport_name",
+			NodeID:      nodeID.String(),
+			TransportID: transportID.String(),
 			State:       models.AdministrativeStateDeletePending,
-			TransportVlans: models.TransportVlans{
-				AVlan: 19,
-				ZVlan: 19,
-			},
-			Product: models.TransportProduct{
-				Product: models.Product{
-					Provider:  "EQUINIX",
-					Duration:  0,
-					Location:  "EQUINIX FR5",
-					Bandwidth: 100,
-					PriceNRC:  0,
-					PriceMRC:  0,
-					CostNRC:   0,
-					CostMRC:   0,
-					SKU:       "CEQUFR5100AWS",
-				},
-				LocationTo: "EQUINIX LD5",
-			},
-			ConnectionID: "3091af46-3586-4cd1-bdbf-b569d2219823",
 		},
 	}
 
-	transportDeleteResponse = models.TransportResponse{
-		Data: models.Transport{},
+	attachmentDeleteResponse = models.AttachmentResponse{
+		Data: models.Attachment{},
 	}
 )
 
-func TestCreateTransportSuccessfully(t *testing.T) {
+func TestCreateAttachmentSuccessfully(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -195,32 +114,29 @@ func TestCreateTransportSuccessfully(t *testing.T) {
 		}),
 		WithPersonalAccessToken(personalAccessToken),
 	)
-	cli.poll.maxRetry = 1
-	cli.poll.retryInterval = 1 * time.Second
+
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := transportCreateResponse
+	result := attachmentCreateResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/transports", accountId, workspaceID)),
+			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments", accountId, workspaceID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, transportCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, attachmentCreateResponse),
 		),
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, transportCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, attachmentCreateResponse),
 		),
 	)
 
-	data, err := cli.CreateTransport(
+	data, err := cli.CreateAttachment(
 		context.Background(),
-		models.CreateTransport{
-			Name: "transport_name",
-			Product: models.AddProduct{
-				SKU: "CEQUFR5100AWS",
-			},
+		models.CreateAttachment{
+			NodeID:      nodeID.String(),
+			TransportID: transportID.String(),
 		},
 		workspaceID,
 		WithAdministrativeState(models.AdministrativeStateCreationPending),
@@ -230,7 +146,7 @@ func TestCreateTransportSuccessfully(t *testing.T) {
 	g.Expect(*data).Should(Equal(result.Data))
 }
 
-func TestCreateTransportWaitForStateDeployed(t *testing.T) {
+func TestCreateAttachmentWaitForStateDeployed(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -262,38 +178,37 @@ func TestCreateTransportWaitForStateDeployed(t *testing.T) {
 		}),
 		WithPersonalAccessToken(personalAccessToken),
 	)
-	cli.poll.maxRetry = 2
-	cli.poll.retryInterval = 1 * time.Second
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := transportDeployedResponse
+	cli.poll.maxRetry = 2
+	cli.poll.retryInterval = 1 * time.Second
+
+	result := attachmentDeployedResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/transports", accountId, workspaceID)),
+			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments", accountId, workspaceID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, transportCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, attachmentCreateResponse),
 		),
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, transportCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, attachmentCreateResponse),
 		),
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, transportDeployedResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, attachmentDeployedResponse),
 		),
 	)
 
-	data, err := cli.CreateTransport(
+	data, err := cli.CreateAttachment(
 		context.Background(),
-		models.CreateTransport{
-			Name: "transport_name",
-			Product: models.AddProduct{
-				SKU: "CEQUFR5100AWS",
-			},
+		models.CreateAttachment{
+			NodeID:      nodeID.String(),
+			TransportID: transportID.String(),
 		},
 		workspaceID,
 	)
@@ -301,8 +216,7 @@ func TestCreateTransportWaitForStateDeployed(t *testing.T) {
 	g.Expect(err).ShouldNot(HaveOccurred())
 	g.Expect(*data).Should(Equal(result.Data))
 }
-
-func TestCreateTransportPollNotFound(t *testing.T) {
+func TestCreateAttachmentWaitForStateTimeout(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -336,93 +250,89 @@ func TestCreateTransportPollNotFound(t *testing.T) {
 	)
 	cli.poll.maxRetry = 1
 	cli.poll.retryInterval = 1 * time.Second
+
 	g.Expect(err).ShouldNot(HaveOccurred())
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/transports", accountId, workspaceID)),
+			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments", accountId, workspaceID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, transportCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, attachmentCreateResponse),
 		),
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, attachmentCreateResponse),
+		),
+	)
+
+	_, err = cli.CreateAttachment(
+		context.Background(),
+		models.CreateAttachment{
+			NodeID:      nodeID.String(),
+			TransportID: transportID.String(),
+		},
+		workspaceID,
+	)
+
+	g.Expect(err).ShouldNot(BeNil())
+}
+
+func TestCreateAttachmentPollNotFound(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	cli.poll.maxRetry = 1
+	cli.poll.retryInterval = 1 * time.Second
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments", accountId, workspaceID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusAccepted, attachmentCreateResponse),
+		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusNotFound, nil),
 		),
 	)
 
-	_, err = cli.CreateTransport(
+	_, err = cli.CreateAttachment(
 		context.Background(),
-		models.CreateTransport{
-			Name: "transport_name",
-			Product: models.AddProduct{
-				SKU: "CEQUFR5100AWS",
-			},
-		},
-		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
-	)
-
-	g.Expect(err).ShouldNot(BeNil())
-}
-
-func TestCreateTransportWaitForStateTimeout(t *testing.T) {
-	g := NewWithT(t)
-	gh := ghttp.NewGHTTPWithGomega(g)
-
-	server := ghttp.NewServer()
-	defer server.Close()
-
-	serverURL, err := url.Parse(server.URL())
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, "/users/self"),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
-				AccountID: uuid.MustParse(accountId),
-			}),
-		),
-	)
-
-	cli, err := NewClient(
-		true,
-		WithHostURL(serverURL),
-		WithHTTPClient(&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true, //nolint:gosec //No
-				},
-			},
-		}),
-		WithPersonalAccessToken(personalAccessToken),
-	)
-	cli.poll.maxRetry = 1
-	cli.poll.retryInterval = 1 * time.Second
-
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/transports", accountId, workspaceID)),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, transportCreateResponse),
-		),
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, transportCreateResponse),
-		),
-	)
-
-	_, err = cli.CreateTransport(
-		context.Background(),
-		models.CreateTransport{
-			Name: "transport_name",
-			Product: models.AddProduct{
-				SKU: "CEQUFR5100AWS",
-			},
+		models.CreateAttachment{
+			NodeID:      nodeID.String(),
+			TransportID: transportID.String(),
 		},
 		workspaceID,
 	)
@@ -430,7 +340,7 @@ func TestCreateTransportWaitForStateTimeout(t *testing.T) {
 	g.Expect(err).ShouldNot(BeNil())
 }
 
-func TestCreateTransportForbidden(t *testing.T) {
+func TestCreateAttachmentForbidden(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -466,19 +376,17 @@ func TestCreateTransportForbidden(t *testing.T) {
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/transports", accountId, workspaceID)),
+			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments", accountId, workspaceID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusForbidden, nil),
 		),
 	)
 
-	data, err := cli.CreateTransport(
+	data, err := cli.CreateAttachment(
 		context.Background(),
-		models.CreateTransport{
-			Name: "transport_name",
-			Product: models.AddProduct{
-				SKU: "CEQUFR5100AWS",
-			},
+		models.CreateAttachment{
+			NodeID:      nodeID.String(),
+			TransportID: transportID.String(),
 		},
 		workspaceID,
 	)
@@ -487,7 +395,7 @@ func TestCreateTransportForbidden(t *testing.T) {
 	g.Expect(data).Should(BeNil())
 }
 
-func TestCreateTransportFailedValidator(t *testing.T) {
+func TestCreateAttachmentFailedValidator(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -521,32 +429,30 @@ func TestCreateTransportFailedValidator(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	data, err := cli.CreateTransport(
+	data, err := cli.CreateAttachment(
 		context.Background(),
-		models.CreateTransport{
-			Product: models.AddProduct{
-				SKU: "CEQUFR5100AWS",
-			},
+		models.CreateAttachment{
+			NodeID: nodeID.String(),
 		},
 		workspaceID,
 	)
 
-	g.Expect(err.Error()).Should(Equal("Key: 'CreateTransport.Name' Error:Field validation for 'Name' failed on the 'required' tag"))
+	g.Expect(err.Error()).Should(Equal("Key: 'CreateAttachment.TransportID' Error:Field validation for 'TransportID' failed on the 'required' tag"))
 	g.Expect(data).Should(BeNil())
 
-	data, err = cli.CreateTransport(
+	data, err = cli.CreateAttachment(
 		context.Background(),
-		models.CreateTransport{
-			Name: "node_name",
+		models.CreateAttachment{
+			TransportID: transportID.String(),
 		},
 		workspaceID,
 	)
 
-	g.Expect(err.Error()).Should(Equal("Key: 'CreateTransport.Product.SKU' Error:Field validation for 'SKU' failed on the 'required' tag"))
+	g.Expect(err.Error()).Should(Equal("Key: 'CreateAttachment.NodeID' Error:Field validation for 'NodeID' failed on the 'required' tag"))
 	g.Expect(data).Should(BeNil())
 }
 
-func TestCreateTransportWrongAdministrativeState(t *testing.T) {
+func TestCreateAttachmentWrongAdministrativeState(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -580,23 +486,22 @@ func TestCreateTransportWrongAdministrativeState(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	data, err := cli.CreateTransport(
+	data, err := cli.CreateAttachment(
 		context.Background(),
-		models.CreateTransport{
-			Name: "node_name",
-			Product: models.AddProduct{
-				SKU: "CEQUFR5100AWS",
-			},
+
+		models.CreateAttachment{
+			NodeID:      nodeID.String(),
+			TransportID: transportID.String(),
 		},
 		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateDeletePending),
+		WithAdministrativeState(models.AdministrativeStateDeleteProceed),
 	)
 
 	g.Expect(err.Error()).Should(Equal(ErrCreationAdministrativeState.Error()))
 	g.Expect(data).Should(BeNil())
 }
 
-func TestGetTransportSuccessfully(t *testing.T) {
+func TestGetAttachmentSuccessfully(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -630,27 +535,27 @@ func TestGetTransportSuccessfully(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := transportCreateResponse
+	result := attachmentCreateResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, transportCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, attachmentCreateResponse),
 		),
 	)
 
-	data, err := cli.GetTransport(
+	data, err := cli.GetAttachment(
 		context.Background(),
 		workspaceID,
-		transportID.String(),
+		attachmentID.String(),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 	g.Expect(*data).Should(Equal(result.Data))
 }
 
-func TestGetTransportCreationError(t *testing.T) {
+func TestGetAttachmentCreationError(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -684,27 +589,27 @@ func TestGetTransportCreationError(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := transportCreateErrorResponse
+	result := attachmentCreationErrorResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, transportCreateErrorResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, attachmentCreationErrorResponse),
 		),
 	)
 
-	data, err := cli.GetTransport(
+	data, err := cli.GetAttachment(
 		context.Background(),
 		workspaceID,
-		transportID.String(),
+		attachmentID.String(),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 	g.Expect(*data).Should(Equal(result.Data))
 }
 
-func TestGetTransportNotFound(t *testing.T) {
+func TestGetAttachmentNotFound(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -740,23 +645,23 @@ func TestGetTransportNotFound(t *testing.T) {
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusNotFound, nil),
 		),
 	)
 
-	data, err := cli.GetTransport(
+	data, err := cli.GetAttachment(
 		context.Background(),
 		workspaceID,
-		nodeID.String(),
+		attachmentID.String(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
 	g.Expect(data).Should(BeNil())
 }
 
-func TestUpdateTransportSuccessfully(t *testing.T) {
+func TestDeleteAttachmentSuccessfully(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -790,137 +695,25 @@ func TestUpdateTransportSuccessfully(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := transportUpdateResponse
+	result := attachmentDeletePendingResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodPatch, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, transportUpdateResponse),
-		),
-	)
-
-	data, err := cli.UpdateTransport(
-		context.Background(),
-		models.UpdateElement{
-			Name: "transport_updated_name",
-		},
-		workspaceID,
-		transportID.String(),
-	)
-
-	g.Expect(err).ShouldNot(HaveOccurred())
-	g.Expect(*data).Should(Equal(result.Data))
-}
-
-func TestUpdateTransportNotFound(t *testing.T) {
-	g := NewWithT(t)
-	gh := ghttp.NewGHTTPWithGomega(g)
-
-	server := ghttp.NewServer()
-	defer server.Close()
-
-	serverURL, err := url.Parse(server.URL())
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, "/users/self"),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
-				AccountID: uuid.MustParse(accountId),
-			}),
-		),
-	)
-
-	cli, err := NewClient(
-		true,
-		WithHostURL(serverURL),
-		WithHTTPClient(&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true, //nolint:gosec //No
-				},
-			},
-		}),
-		WithPersonalAccessToken(personalAccessToken),
-	)
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodPatch, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusNotFound, nil),
-		),
-	)
-
-	data, err := cli.UpdateTransport(
-		context.Background(),
-		models.UpdateElement{
-			Name: "transport_updated_name",
-		},
-		workspaceID,
-		transportID.String(),
-	)
-
-	g.Expect(err).ShouldNot(BeNil())
-	g.Expect(data).Should(BeNil())
-}
-
-func TestDeleteTransportSuccessfully(t *testing.T) {
-	g := NewWithT(t)
-	gh := ghttp.NewGHTTPWithGomega(g)
-
-	server := ghttp.NewServer()
-	defer server.Close()
-
-	serverURL, err := url.Parse(server.URL())
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, "/users/self"),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
-				AccountID: uuid.MustParse(accountId),
-			}),
-		),
-	)
-
-	cli, err := NewClient(
-		true,
-		WithHostURL(serverURL),
-		WithHTTPClient(&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true, //nolint:gosec //No
-				},
-			},
-		}),
-		WithPersonalAccessToken(personalAccessToken),
-	)
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	result := transportDeletePendingResponse
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, transportDeletePendingResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, attachmentDeletePendingResponse),
 		),
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, transportDeletePendingResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, attachmentDeletePendingResponse),
 		),
 	)
 
-	data, err := cli.DeleteTransport(
+	data, err := cli.DeleteAttachment(
 		context.Background(),
 		workspaceID,
-		transportID.String(),
+		attachmentID.String(),
 		WithAdministrativeState(models.AdministrativeStateDeletePending),
 	)
 
@@ -928,7 +721,7 @@ func TestDeleteTransportSuccessfully(t *testing.T) {
 	g.Expect(*data).Should(Equal(result.Data))
 }
 
-func TestDeleteTransportWaitForStateDeleted(t *testing.T) {
+func TestDeleteAttachmentWaitForStateDeleted(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -960,37 +753,38 @@ func TestDeleteTransportWaitForStateDeleted(t *testing.T) {
 		}),
 		WithPersonalAccessToken(personalAccessToken),
 	)
+
 	g.Expect(err).ShouldNot(HaveOccurred())
 
 	cli.poll.maxRetry = 1
 	cli.poll.retryInterval = 1 * time.Second
 
-	result := transportDeleteResponse
+	result := attachmentDeleteResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, transportDeletePendingResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, attachmentDeletePendingResponse),
 		),
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusNotFound, nil),
 		),
 	)
 
-	data, err := cli.DeleteTransport(
+	data, err := cli.DeleteAttachment(
 		context.Background(),
 		workspaceID,
-		transportID.String(),
+		attachmentID.String(),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 	g.Expect(*data).Should(Equal(result.Data))
 }
 
-func TestDeleteTransportWaitForStateTimeout(t *testing.T) {
+func TestDeleteAttachmentWaitForStateTimeout(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -1022,6 +816,7 @@ func TestDeleteTransportWaitForStateTimeout(t *testing.T) {
 		}),
 		WithPersonalAccessToken(personalAccessToken),
 	)
+
 	g.Expect(err).ShouldNot(HaveOccurred())
 
 	cli.poll.maxRetry = 1
@@ -1029,27 +824,27 @@ func TestDeleteTransportWaitForStateTimeout(t *testing.T) {
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, transportDeletePendingResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, attachmentDeletePendingResponse),
 		),
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, transportDeletePendingResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, attachmentDeletePendingResponse),
 		),
 	)
 
-	_, err = cli.DeleteTransport(
+	_, err = cli.DeleteAttachment(
 		context.Background(),
 		workspaceID,
-		transportID.String(),
+		attachmentID.String(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
 }
 
-func TestDeleteTransportForbidden(t *testing.T) {
+func TestDeleteAttachmentForbidden(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -1085,23 +880,23 @@ func TestDeleteTransportForbidden(t *testing.T) {
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
+			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusForbidden, nil),
 		),
 	)
 
-	data, err := cli.DeleteTransport(
+	data, err := cli.DeleteAttachment(
 		context.Background(),
 		workspaceID,
-		transportID.String(),
+		attachmentID.String(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
 	g.Expect(data).Should(BeNil())
 }
 
-func TestDeleteTransportWrongAdministrativeState(t *testing.T) {
+func TestDeleteAttachmentWrongAdministrativeState(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -1135,18 +930,10 @@ func TestDeleteTransportWrongAdministrativeState(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, transportDeleteResponse),
-		),
-	)
-
-	data, err := cli.DeleteTransport(
+	data, err := cli.DeleteAttachment(
 		context.Background(),
 		workspaceID,
-		transportID.String(),
+		attachmentID.String(),
 		WithAdministrativeState(models.AdministrativeStateCreationPending),
 	)
 
