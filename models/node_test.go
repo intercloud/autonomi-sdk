@@ -13,22 +13,22 @@ func TestNodeTypeString(t *testing.T) {
 		expect   string
 	}{
 		{
-			name:     NodeTypeAccess,
+			name:     NodeTypeAccess.String(),
 			nodeType: NodeTypeAccess,
 			expect:   "access",
 		},
 		{
-			name:     NodeTypeBridge,
+			name:     NodeTypeBridge.String(),
 			nodeType: NodeTypeBridge,
 			expect:   "bridge",
 		},
 		{
-			name:     NodeTypeCloud,
+			name:     NodeTypeCloud.String(),
 			nodeType: NodeTypeCloud,
 			expect:   "cloud",
 		},
 		{
-			name:     NodeTypeRouter,
+			name:     NodeTypeRouter.String(),
 			nodeType: NodeTypeRouter,
 			expect:   "router",
 		},

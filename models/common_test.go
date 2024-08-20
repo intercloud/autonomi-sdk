@@ -13,42 +13,42 @@ func TestAdministrativeStateString(t *testing.T) {
 		expect              string
 	}{
 		{
-			name:                NodeTypeAccess,
+			name:                AdministrativeStateCreationPending.String(),
 			administrativeState: AdministrativeStateCreationPending,
 			expect:              "creation_pending",
 		},
 		{
-			name:                NodeTypeBridge,
+			name:                AdministrativeStateCreationProceed.String(),
 			administrativeState: AdministrativeStateCreationProceed,
 			expect:              "creation_proceed",
 		},
 		{
-			name:                NodeTypeCloud,
+			name:                AdministrativeStateCreationError.String(),
 			administrativeState: AdministrativeStateCreationError,
 			expect:              "creation_error",
 		},
 		{
-			name:                NodeTypeRouter,
+			name:                AdministrativeStateDeployed.String(),
 			administrativeState: AdministrativeStateDeployed,
 			expect:              "deployed",
 		},
 		{
-			name:                NodeTypeRouter,
+			name:                AdministrativeStateDeletePending.String(),
 			administrativeState: AdministrativeStateDeletePending,
 			expect:              "delete_pending",
 		},
 		{
-			name:                NodeTypeRouter,
+			name:                AdministrativeStateDeleteProceed.String(),
 			administrativeState: AdministrativeStateDeleteProceed,
 			expect:              "delete_proceed",
 		},
 		{
-			name:                NodeTypeRouter,
+			name:                AdministrativeStateDeleteError.String(),
 			administrativeState: AdministrativeStateDeleteError,
 			expect:              "delete_error",
 		},
 		{
-			name:                NodeTypeRouter,
+			name:                AdministrativeStateDeleted.String(),
 			administrativeState: AdministrativeStateDeleted,
 			expect:              "deleted",
 		},
