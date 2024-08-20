@@ -2,27 +2,41 @@ package models
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type NodeType string
 
 const (
-	NodeTypeAccess = "access"
-	NodeTypeCloud  = "cloud"
-	NodeTypeBridge = "bridge"
-	NodeTypeRouter = "router"
+	NodeTypeAccess NodeType = "access"
+	NodeTypeCloud  NodeType = "cloud"
+	NodeTypeBridge NodeType = "bridge"
+	NodeTypeRouter NodeType = "router"
 )
 
 func (nt NodeType) String() string {
 	return string(nt)
 }
 
+type AccessProductType string
+
+const (
+	AccessProductTypePhysical AccessProductType = "PHYSICAL"
+	AccessProductTypeVirtual  AccessProductType = "VIRTUAL"
+)
+
+func (at AccessProductType) String() string {
+	return string(at)
+}
+
 type NodeProduct struct {
 	Product
-	CSPName         string `json:"cspName,omitempty"`
-	CSPNameUnderlay string `json:"cspNameUnderlay,omitempty"`
-	CSPCity         string `json:"cspCity,omitempty"`
-	CSPRegion       string `json:"cspRegion,omitempty"`
+	CSPName         string            `json:"cspName,omitempty"`
+	CSPNameUnderlay string            `json:"cspNameUnderlay,omitempty"`
+	CSPCity         string            `json:"cspCity,omitempty"`
+	CSPRegion       string            `json:"cspRegion,omitempty"`
+	Type            AccessProductType `json:"type,omitempty"`
 }
 
 type Port struct {
@@ -63,7 +77,9 @@ type AddProduct struct {
 }
 type CreateNode struct {
 	Name           string               `json:"name" binding:"required"`
-	Type           string               `json:"type" binding:"required"`
+	Type           NodeType             `json:"type" binding:"required"`
 	Product        AddProduct           `json:"product" binding:"required"`
 	ProviderConfig *ProviderCloudConfig `json:"providerConfig" binding:"required_if=Type cloud"`
+	PhysicalPortID *uuid.UUID           `json:"physicalPortId,omitempty" binding:"required_if=Type access"`
+	Vlan           int64                `json:"vlan,omitempty" binding:"required_if=Type access"`
 }
