@@ -78,9 +78,8 @@ var (
 				},
 				Type: models.AccessProductTypePhysical,
 			},
-			ProviderConfig: &models.ProviderCloudConfig{
-				AccountID: "456789",
-			},
+			Vlan:           2,
+			PhysicalPortID: &physicalPortId,
 		},
 	}
 
