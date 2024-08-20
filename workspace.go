@@ -39,6 +39,26 @@ func (c *Client) CreateWorkspace(ctx context.Context, payload models.CreateWorks
 	return &workspace.Data, nil
 }
 
+func (c *Client) ListWorkspaces(ctx context.Context) ([]models.Workspace, error) {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/accounts/%s/workspaces", c.hostURL, c.accountID), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.doRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	workspaces := models.WorkspacesResponse{}
+	err = json.Unmarshal(resp, &workspaces)
+	if err != nil {
+		return nil, err
+	}
+
+	return workspaces.Data, nil
+}
+
 func (c *Client) GetWorkspace(ctx context.Context, workspaceID string) (*models.Workspace, error) {
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/accounts/%s/workspaces/%s", c.hostURL, c.accountID, workspaceID), nil)
 	if err != nil {
