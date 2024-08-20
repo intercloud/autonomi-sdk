@@ -66,7 +66,7 @@ type Node struct {
 	Vlan           int64                `json:"vlan,omitempty"`
 	DxconID        string               `json:"dxconId,omitempty"`
 	Error          *SupportError        `json:"error,omitempty"`
-	PhysicalPortID *uuid.UUID           `json:"physicalPortId,omitempty"`
+	PhysicalPort   *PhysicalPort        `json:"physicalPort,omitempty"`
 }
 
 type NodeResponse struct {

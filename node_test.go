@@ -78,8 +78,10 @@ var (
 				},
 				Type: models.AccessProductTypePhysical,
 			},
-			Vlan:           2,
-			PhysicalPortID: &physicalPortId,
+			Vlan: 2,
+			PhysicalPort: &models.PhysicalPort{
+				ID: physicalPortId,
+			},
 		},
 	}
 
