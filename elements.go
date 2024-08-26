@@ -13,11 +13,6 @@ type elementOptions struct {
 }
 type OptionElement func(*elementOptions)
 
-// var (
-// 	waitUntilElementDeployed   = []models.AdministrativeState{models.AdministrativeStateCreationError, models.AdministrativeStateDeployed}
-// 	waitUntilElementUndeployed = []models.AdministrativeState{models.AdministrativeStateDeleteError, models.AdministrativeStateDeleted}
-// )
-
 func WithWaitUntilElementDeployed() OptionElement {
 	return func(e *elementOptions) {
 		e.waitUntilElementDeployed = true
