@@ -13,10 +13,10 @@ type elementOptions struct {
 }
 type OptionElement func(*elementOptions)
 
-var (
-	waitUntilElementDeployed   = []models.AdministrativeState{models.AdministrativeStateCreationError, models.AdministrativeStateDeployed}
-	waitUntilElementUndeployed = []models.AdministrativeState{models.AdministrativeStateDeleteError, models.AdministrativeStateDeleted}
-)
+// var (
+// 	waitUntilElementDeployed   = []models.AdministrativeState{models.AdministrativeStateCreationError, models.AdministrativeStateDeployed}
+// 	waitUntilElementUndeployed = []models.AdministrativeState{models.AdministrativeStateDeleteError, models.AdministrativeStateDeleted}
+// )
 
 func WithWaitUntilElementDeployed() OptionElement {
 	return func(e *elementOptions) {
@@ -32,17 +32,21 @@ func WithWaitUntilElementUndeployed() OptionElement {
 
 type Element interface {
 	*models.Node | *models.Transport | *models.Attachment
+
+	GetState() models.AdministrativeState
 }
 
-func WaitUntilFinishedTask[T Element](ctx context.Context, client *Client, workspaceID, elementID string, waiterOptions []models.AdministrativeState, funcToCall func(context.Context, *Client, string, string, []models.AdministrativeState) (T, bool)) (T, bool) {
+func WaitUntilFinishedTask[T Element](ctx context.Context, client *Client, workspaceID, elementID string, waiterOptions models.AdministrativeState, funcToCall func(context.Context, *Client, string, string, models.AdministrativeState) (T, bool)) (T, bool) {
 	var lastElement T
 	for i := 0; i < client.poll.maxRetry; i++ {
 		// Retrieve the element and check if it is in the required administrative state
-		element, isInDesiredState := funcToCall(ctx, client, workspaceID, elementID, waiterOptions)
+		element, finishedTask := funcToCall(ctx, client, workspaceID, elementID, waiterOptions)
 		lastElement = element
-
-		if isInDesiredState {
+		if finishedTask {
 			return lastElement, true
+		}
+		if lastElement != nil && (lastElement.GetState() == models.AdministrativeStateCreationError || lastElement.GetState() == models.AdministrativeStateDeleteError) {
+			return lastElement, false
 		}
 		time.Sleep(client.poll.retryInterval)
 	}

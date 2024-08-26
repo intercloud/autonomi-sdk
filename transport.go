@@ -7,17 +7,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"slices"
 	"strings"
 
 	"github.com/intercloud/autonomi-sdk/models"
 )
 
-func checkTransportFinishedTask(ctx context.Context, c *Client, workspaceID, transportID string, waiterOptions []models.AdministrativeState) (*models.Transport, bool) {
+func checkTransportFinishedTask(ctx context.Context, c *Client, workspaceID, transportID string, waiterOptionState models.AdministrativeState) (*models.Transport, bool) {
 	transport, err := c.GetTransport(ctx, workspaceID, transportID)
 	if err != nil {
 		// if wanted state is deleted and the attachment is in this state, api has returned 404
-		if slices.Equal(waiterOptions, waitUntilElementUndeployed) {
+		if waiterOptionState == models.AdministrativeStateDeleted {
 			if strings.Contains(err.Error(), "status: 404") {
 				return nil, true
 			}
@@ -26,7 +25,7 @@ func checkTransportFinishedTask(ctx context.Context, c *Client, workspaceID, tra
 		return nil, false
 	}
 
-	return transport, slices.Contains(waiterOptions, transport.State)
+	return transport, waiterOptionState == transport.State
 }
 
 // CreateTransport creates asynchronously a transport. The transport returned will depend of the passed option.
@@ -68,7 +67,7 @@ func (c *Client) CreateTransport(ctx context.Context, payload models.CreateTrans
 	var transportPolled = &transport.Data
 	if transportOptions.waitUntilElementDeployed {
 		var success bool
-		transportPolled, success = WaitUntilFinishedTask(ctx, c, workspaceID, transport.Data.ID.String(), waitUntilElementDeployed, checkTransportFinishedTask)
+		transportPolled, success = WaitUntilFinishedTask(ctx, c, workspaceID, transport.Data.ID.String(), models.AdministrativeStateDeployed, checkTransportFinishedTask)
 		if !success {
 			return nil, fmt.Errorf("Transport did not reach '%s' state in time.", models.AdministrativeStateDeployed)
 		}
@@ -152,7 +151,7 @@ func (c *Client) DeleteTransport(ctx context.Context, workspaceID, transportID s
 	var transportPolled = &transport.Data
 	if transportOptions.waitUntilElementUndeployed {
 		var success bool
-		transportPolled, success = WaitUntilFinishedTask(ctx, c, workspaceID, transport.Data.ID.String(), waitUntilElementUndeployed, checkTransportFinishedTask)
+		transportPolled, success = WaitUntilFinishedTask(ctx, c, workspaceID, transport.Data.ID.String(), models.AdministrativeStateDeleted, checkTransportFinishedTask)
 		if !success {
 			return nil, fmt.Errorf("Transport did not reach '%s' state in time.", models.AdministrativeStateDeleted)
 		}

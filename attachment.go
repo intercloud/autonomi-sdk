@@ -7,17 +7,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"slices"
 	"strings"
 
 	"github.com/intercloud/autonomi-sdk/models"
 )
 
-func checkAttachmentFinishedTask(ctx context.Context, c *Client, workspaceID, attachmentID string, waiterOptions []models.AdministrativeState) (*models.Attachment, bool) {
+func checkAttachmentFinishedTask(ctx context.Context, c *Client, workspaceID, attachmentID string, waiterOptionState models.AdministrativeState) (*models.Attachment, bool) {
 	attachment, err := c.GetAttachment(ctx, workspaceID, attachmentID)
 	if err != nil {
 		// if wanted state is deleted and the attachment is in this state, api has returned 404
-		if slices.Equal(waiterOptions, waitUntilElementUndeployed) {
+		if waiterOptionState == models.AdministrativeStateDeleted {
 			if strings.Contains(err.Error(), "status: 404") {
 				return nil, true
 			}
@@ -26,7 +25,7 @@ func checkAttachmentFinishedTask(ctx context.Context, c *Client, workspaceID, at
 		return nil, false
 	}
 
-	return attachment, slices.Contains(waiterOptions, attachment.State)
+	return attachment, waiterOptionState == attachment.State
 }
 
 // CreateAttachment creates asynchronously an attachment. The attachment returned will depend of the passed option.
@@ -68,7 +67,7 @@ func (c *Client) CreateAttachment(ctx context.Context, payload models.CreateAtta
 	var attachmentPolled = &attachment.Data
 	if attachmentOptions.waitUntilElementDeployed {
 		var success bool
-		attachmentPolled, success = WaitUntilFinishedTask(ctx, c, workspaceID, attachment.Data.ID.String(), waitUntilElementDeployed, checkAttachmentFinishedTask)
+		attachmentPolled, success = WaitUntilFinishedTask(ctx, c, workspaceID, attachment.Data.ID.String(), models.AdministrativeStateDeployed, checkAttachmentFinishedTask)
 		if !success {
 			return nil, fmt.Errorf("Attachment did not reach '%s' state in time.", models.AdministrativeStateDeployed)
 		}
@@ -126,7 +125,7 @@ func (c *Client) DeleteAttachment(ctx context.Context, workspaceID, attachmentID
 	var attachmentPolled = &attachment.Data
 	if attachmentOptions.waitUntilElementUndeployed {
 		var success bool
-		attachmentPolled, success = WaitUntilFinishedTask(ctx, c, workspaceID, attachment.Data.ID.String(), waitUntilElementUndeployed, checkAttachmentFinishedTask)
+		attachmentPolled, success = WaitUntilFinishedTask(ctx, c, workspaceID, attachment.Data.ID.String(), models.AdministrativeStateDeleted, checkAttachmentFinishedTask)
 		if !success {
 			return nil, fmt.Errorf("Attachment did not reach '%s' state in time.", models.AdministrativeStateDeleted)
 		}

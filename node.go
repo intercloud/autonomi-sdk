@@ -7,17 +7,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"slices"
 	"strings"
 
 	"github.com/intercloud/autonomi-sdk/models"
 )
 
-func checkNodeFinishedTask(ctx context.Context, c *Client, workspaceID, nodeID string, waiterOptions []models.AdministrativeState) (*models.Node, bool) {
+func checkNodeFinishedTask(ctx context.Context, c *Client, workspaceID, nodeID string, waiterOptionState models.AdministrativeState) (*models.Node, bool) {
 	node, err := c.GetNode(ctx, workspaceID, nodeID)
 	if err != nil {
 		// if wanted state is deleted and the attachment is in this state, api has returned 404
-		if slices.Equal(waiterOptions, waitUntilElementUndeployed) {
+		if waiterOptionState == models.AdministrativeStateDeleted {
 			if strings.Contains(err.Error(), "status: 404") {
 				return nil, true
 			}
@@ -26,7 +25,7 @@ func checkNodeFinishedTask(ctx context.Context, c *Client, workspaceID, nodeID s
 		return nil, false
 	}
 
-	return node, slices.Contains(waiterOptions, node.State)
+	return node, waiterOptionState == node.State
 }
 
 // CreateNode creates asynchronously a cloud node. The node returned will depend of the passed option.
@@ -68,7 +67,7 @@ func (c *Client) CreateNode(ctx context.Context, payload models.CreateNode, work
 	var nodePolled = &node.Data
 	if cloudOptions.waitUntilElementDeployed {
 		var success bool
-		nodePolled, success = WaitUntilFinishedTask(ctx, c, workspaceID, node.Data.ID.String(), waitUntilElementDeployed, checkNodeFinishedTask)
+		nodePolled, success = WaitUntilFinishedTask(ctx, c, workspaceID, node.Data.ID.String(), models.AdministrativeStateDeployed, checkNodeFinishedTask)
 		if !success {
 			return nil, fmt.Errorf("Node did not reach '%s' state in time.", models.AdministrativeStateDeployed)
 		}
@@ -152,7 +151,7 @@ func (c *Client) DeleteNode(ctx context.Context, workspaceID, nodeID string, opt
 	var nodePolled = &node.Data
 	if cloudOptions.waitUntilElementUndeployed {
 		var success bool
-		nodePolled, success = WaitUntilFinishedTask(ctx, c, workspaceID, node.Data.ID.String(), waitUntilElementUndeployed, checkNodeFinishedTask)
+		nodePolled, success = WaitUntilFinishedTask(ctx, c, workspaceID, node.Data.ID.String(), models.AdministrativeStateDeleted, checkNodeFinishedTask)
 		if !success {
 			return nil, fmt.Errorf("Node did not reach '%s' state in time.", models.AdministrativeStateDeleted)
 		}

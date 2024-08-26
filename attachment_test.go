@@ -267,8 +267,6 @@ func TestCreateAttachmentCreationError(t *testing.T) {
 	cli.poll.maxRetry = 2
 	cli.poll.retryInterval = 1 * time.Second
 
-	result := attachmentCreationErrorResponse
-
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments", accountId, workspaceID)),
@@ -297,8 +295,8 @@ func TestCreateAttachmentCreationError(t *testing.T) {
 		WithWaitUntilElementDeployed(),
 	)
 
-	g.Expect(err).ShouldNot(HaveOccurred())
-	g.Expect(*data).Should(Equal(result.Data))
+	g.Expect(err).ShouldNot(BeNil())
+	g.Expect(data).Should(BeNil())
 }
 
 func TestCreateAttachmentWaitForStateTimeout(t *testing.T) {
@@ -860,8 +858,6 @@ func TestDeleteAttachmentDeleteError(t *testing.T) {
 	cli.poll.maxRetry = 1
 	cli.poll.retryInterval = 1 * time.Second
 
-	result := attachmentDeleteErrorResponse
-
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
@@ -882,8 +878,8 @@ func TestDeleteAttachmentDeleteError(t *testing.T) {
 		WithWaitUntilElementUndeployed(),
 	)
 
-	g.Expect(err).ShouldNot(HaveOccurred())
-	g.Expect(*data).Should(Equal(result.Data))
+	g.Expect(err).ShouldNot(BeNil())
+	g.Expect(data).Should(BeNil())
 }
 
 func TestDeleteAttachmentWaitForStateTimeout(t *testing.T) {
