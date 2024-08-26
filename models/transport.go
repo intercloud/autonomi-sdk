@@ -25,6 +25,10 @@ type Transport struct {
 	ConnectionID   string              `json:"connectionId,omitempty"`
 }
 
+func (t *Transport) GetState() AdministrativeState {
+	return t.State
+}
+
 type CreateTransport struct {
 	Name    string     `json:"name" binding:"required"`
 	Product AddProduct `json:"product" binding:"required"`

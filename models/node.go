@@ -69,6 +69,10 @@ type Node struct {
 	PhysicalPort   *PhysicalPort        `json:"physicalPort,omitempty"`
 }
 
+func (n *Node) GetState() AdministrativeState {
+	return n.State
+}
+
 type NodeResponse struct {
 	Data Node `json:"data"`
 }
