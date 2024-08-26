@@ -1,7 +1,9 @@
 package models
 
-import "github.com/google/uuid"
-
 type PhysicalPort struct {
-	ID uuid.UUID `json:"id"`
+	BaseModel
+}
+
+type PhysicalPortResponse struct {
+	Data []PhysicalPort `json:"data"`
 }

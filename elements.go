@@ -17,6 +17,7 @@ var validCreationAdministrativeStates = map[models.AdministrativeState]struct{}{
 	models.AdministrativeStateCreationPending: {},
 	models.AdministrativeStateCreationProceed: {},
 	models.AdministrativeStateCreationError:   {},
+	models.AdministrativeStateCreated:         {},
 	models.AdministrativeStateDeployed:        {},
 }
 

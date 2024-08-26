@@ -19,6 +19,7 @@ const (
 	AdministrativeStateCreationPending AdministrativeState = "creation_pending"
 	AdministrativeStateCreationProceed AdministrativeState = "creation_proceed"
 	AdministrativeStateCreationError   AdministrativeState = "creation_error"
+	AdministrativeStateCreated         AdministrativeState = "created"
 	AdministrativeStateDeployed        AdministrativeState = "deployed"
 	AdministrativeStateDeletePending   AdministrativeState = "delete_pending"
 	AdministrativeStateDeleteProceed   AdministrativeState = "delete_proceed"
