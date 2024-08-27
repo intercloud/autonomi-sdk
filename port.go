@@ -15,14 +15,6 @@ func (c *Client) ListPort(options ...OptionElement) (*[]models.PhysicalPort, err
 	for _, o := range options {
 		o(portOptions)
 	}
-	// if an optionnal state is passed we check it s correct
-	if portOptions.administrativeState != "" {
-		if _, ok := validCreationAdministrativeStates[portOptions.administrativeState]; !ok {
-			if _, ok := validDeletionAdministrativeStates[portOptions.administrativeState]; !ok {
-				return nil, ErrCreationAdministrativeState
-			}
-		}
-	}
 
 	// run request
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/accounts/%s/ports", c.hostURL, c.accountID), nil)

@@ -10,6 +10,7 @@ import (
 type elementOptions struct {
 	waitUntilElementDeployed   bool
 	waitUntilElementUndeployed bool
+	administrativeState        models.AdministrativeState
 }
 type OptionElement func(*elementOptions)
 
@@ -22,6 +23,13 @@ func WithWaitUntilElementDeployed() OptionElement {
 func WithWaitUntilElementUndeployed() OptionElement {
 	return func(e *elementOptions) {
 		e.waitUntilElementUndeployed = true
+	}
+}
+
+// WithAdministrativeState allows setting a specific administrative state.
+func WithAdministrativeState(administrativeState models.AdministrativeState) OptionElement {
+	return func(c *elementOptions) {
+		c.administrativeState = administrativeState
 	}
 }
 

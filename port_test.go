@@ -133,7 +133,7 @@ func TestListPhysicalPortWithState(t *testing.T) {
 	result := portCreatedListResponse
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/ports", accountId)),
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/ports", accountId), "state=created"),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusOK, portCreatedListResponse),
 		),
