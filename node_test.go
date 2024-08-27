@@ -80,7 +80,9 @@ var (
 			},
 			Vlan: 2,
 			PhysicalPort: &models.PhysicalPort{
-				ID: physicalPortId,
+				BaseModel: models.BaseModel{
+					ID: attachmentID,
+				},
 			},
 		},
 	}
