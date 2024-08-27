@@ -266,7 +266,6 @@ func TestCreateCloudNodeSuccessfully(t *testing.T) {
 			},
 		},
 		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
@@ -344,6 +343,7 @@ func TestCreateCloudNodeWaitForStateDeployed(t *testing.T) {
 			},
 		},
 		workspaceID,
+		WithWaitUntilElementDeployed(),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
@@ -413,6 +413,7 @@ func TestCreateCloudNodeWaitForStateTimeout(t *testing.T) {
 			},
 		},
 		workspaceID,
+		WithWaitUntilElementDeployed(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
@@ -481,6 +482,7 @@ func TestCreateCloudNodePollNotFound(t *testing.T) {
 			},
 		},
 		workspaceID,
+		WithWaitUntilElementDeployed(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
@@ -644,60 +646,6 @@ func TestCreateCloudNodeFailedValidator(t *testing.T) {
 	)
 
 	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.ProviderConfig' Error:Field validation for 'ProviderConfig' failed on the 'required_if' tag"))
-	g.Expect(data).Should(BeNil())
-}
-
-func TestCreateCloudNodeWrongAdministrativeState(t *testing.T) {
-	g := NewWithT(t)
-	gh := ghttp.NewGHTTPWithGomega(g)
-
-	server := ghttp.NewServer()
-	defer server.Close()
-
-	serverURL, err := url.Parse(server.URL())
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, "/users/self"),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
-				AccountID: uuid.MustParse(accountId),
-			}),
-		),
-	)
-
-	cli, err := NewClient(
-		true,
-		WithHostURL(serverURL),
-		WithHTTPClient(&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true, //nolint:gosec //No
-				},
-			},
-		}),
-		WithPersonalAccessToken(personalAccessToken),
-	)
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	data, err := cli.CreateNode(
-		context.Background(),
-		models.CreateNode{
-			Name: "node_name",
-			Type: models.NodeTypeCloud,
-			Product: models.AddProduct{
-				SKU: "CEQUFR5100AWS",
-			},
-			ProviderConfig: &models.ProviderCloudConfig{
-				AccountID: "456789",
-			},
-		},
-		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateDeleteProceed),
-	)
-
-	g.Expect(err.Error()).Should(Equal(ErrCreationAdministrativeState.Error()))
 	g.Expect(data).Should(BeNil())
 }
 
@@ -1026,7 +974,6 @@ func TestDeleteNodeSuccessfully(t *testing.T) {
 		context.Background(),
 		workspaceID,
 		nodeID.String(),
-		WithAdministrativeState(models.AdministrativeStateDeletePending),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
@@ -1090,6 +1037,7 @@ func TestDeleteNodeWaitForStateDeleted(t *testing.T) {
 		context.Background(),
 		workspaceID,
 		nodeID.String(),
+		WithWaitUntilElementUndeployed(),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
@@ -1151,6 +1099,7 @@ func TestDeleteNodeWaitForStateTimeout(t *testing.T) {
 		context.Background(),
 		workspaceID,
 		nodeID.String(),
+		WithWaitUntilElementUndeployed(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
@@ -1205,59 +1154,6 @@ func TestDeleteNodeForbidden(t *testing.T) {
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
-	g.Expect(data).Should(BeNil())
-}
-
-func TestDeleteNodeWrongAdministrativeState(t *testing.T) {
-	g := NewWithT(t)
-	gh := ghttp.NewGHTTPWithGomega(g)
-
-	server := ghttp.NewServer()
-	defer server.Close()
-
-	serverURL, err := url.Parse(server.URL())
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, "/users/self"),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
-				AccountID: uuid.MustParse(accountId),
-			}),
-		),
-	)
-
-	cli, err := NewClient(
-		true,
-		WithHostURL(serverURL),
-		WithHTTPClient(&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true, //nolint:gosec //No
-				},
-			},
-		}),
-		WithPersonalAccessToken(personalAccessToken),
-	)
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeDeleteResponse),
-		),
-	)
-
-	data, err := cli.DeleteNode(
-		context.Background(),
-		workspaceID,
-		nodeID.String(),
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
-	)
-
-	g.Expect(err.Error()).Should(Equal(ErrDeletionAdministrativeState.Error()))
 	g.Expect(data).Should(BeNil())
 }
 
@@ -1323,7 +1219,6 @@ func TestCreateAccessNodeSuccessfully(t *testing.T) {
 			Vlan:           2,
 		},
 		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
@@ -1375,7 +1270,6 @@ func TestCreateAccessNodeFailedValidator(t *testing.T) {
 			Vlan:           2,
 		},
 		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
 	)
 
 	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.Name' Error:Field validation for 'Name' failed on the 'required' tag"))
@@ -1392,7 +1286,6 @@ func TestCreateAccessNodeFailedValidator(t *testing.T) {
 			Vlan:           2,
 		},
 		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
 	)
 
 	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.Type' Error:Field validation for 'Type' failed on the 'required' tag"))
@@ -1408,7 +1301,6 @@ func TestCreateAccessNodeFailedValidator(t *testing.T) {
 			Vlan:           2,
 		},
 		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
 	)
 
 	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.Product.SKU' Error:Field validation for 'SKU' failed on the 'required' tag"))
@@ -1425,7 +1317,6 @@ func TestCreateAccessNodeFailedValidator(t *testing.T) {
 			Vlan: 2,
 		},
 		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
 	)
 
 	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.PhysicalPortID' Error:Field validation for 'PhysicalPortID' failed on the 'required_if' tag"))
@@ -1442,7 +1333,6 @@ func TestCreateAccessNodeFailedValidator(t *testing.T) {
 			PhysicalPortID: &physicalPortId,
 		},
 		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
 	)
 
 	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.Vlan' Error:Field validation for 'Vlan' failed on the 'required_if' tag"))

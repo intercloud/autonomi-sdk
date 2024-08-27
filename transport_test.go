@@ -223,7 +223,6 @@ func TestCreateTransportSuccessfully(t *testing.T) {
 			},
 		},
 		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
@@ -296,6 +295,7 @@ func TestCreateTransportWaitForStateDeployed(t *testing.T) {
 			},
 		},
 		workspaceID,
+		WithWaitUntilElementDeployed(),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
@@ -360,7 +360,7 @@ func TestCreateTransportPollNotFound(t *testing.T) {
 			},
 		},
 		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
+		WithWaitUntilElementDeployed(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
@@ -425,6 +425,7 @@ func TestCreateTransportWaitForStateTimeout(t *testing.T) {
 			},
 		},
 		workspaceID,
+		WithWaitUntilElementDeployed(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
@@ -543,56 +544,6 @@ func TestCreateTransportFailedValidator(t *testing.T) {
 	)
 
 	g.Expect(err.Error()).Should(Equal("Key: 'CreateTransport.Product.SKU' Error:Field validation for 'SKU' failed on the 'required' tag"))
-	g.Expect(data).Should(BeNil())
-}
-
-func TestCreateTransportWrongAdministrativeState(t *testing.T) {
-	g := NewWithT(t)
-	gh := ghttp.NewGHTTPWithGomega(g)
-
-	server := ghttp.NewServer()
-	defer server.Close()
-
-	serverURL, err := url.Parse(server.URL())
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, "/users/self"),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
-				AccountID: uuid.MustParse(accountId),
-			}),
-		),
-	)
-
-	cli, err := NewClient(
-		true,
-		WithHostURL(serverURL),
-		WithHTTPClient(&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true, //nolint:gosec //No
-				},
-			},
-		}),
-		WithPersonalAccessToken(personalAccessToken),
-	)
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	data, err := cli.CreateTransport(
-		context.Background(),
-		models.CreateTransport{
-			Name: "node_name",
-			Product: models.AddProduct{
-				SKU: "CEQUFR5100AWS",
-			},
-		},
-		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateDeletePending),
-	)
-
-	g.Expect(err.Error()).Should(Equal(ErrCreationAdministrativeState.Error()))
 	g.Expect(data).Should(BeNil())
 }
 
@@ -921,7 +872,6 @@ func TestDeleteTransportSuccessfully(t *testing.T) {
 		context.Background(),
 		workspaceID,
 		transportID.String(),
-		WithAdministrativeState(models.AdministrativeStateDeletePending),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
@@ -984,6 +934,7 @@ func TestDeleteTransportWaitForStateDeleted(t *testing.T) {
 		context.Background(),
 		workspaceID,
 		transportID.String(),
+		WithWaitUntilElementUndeployed(),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
@@ -1044,6 +995,7 @@ func TestDeleteTransportWaitForStateTimeout(t *testing.T) {
 		context.Background(),
 		workspaceID,
 		transportID.String(),
+		WithWaitUntilElementUndeployed(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
@@ -1098,58 +1050,5 @@ func TestDeleteTransportForbidden(t *testing.T) {
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
-	g.Expect(data).Should(BeNil())
-}
-
-func TestDeleteTransportWrongAdministrativeState(t *testing.T) {
-	g := NewWithT(t)
-	gh := ghttp.NewGHTTPWithGomega(g)
-
-	server := ghttp.NewServer()
-	defer server.Close()
-
-	serverURL, err := url.Parse(server.URL())
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, "/users/self"),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
-				AccountID: uuid.MustParse(accountId),
-			}),
-		),
-	)
-
-	cli, err := NewClient(
-		true,
-		WithHostURL(serverURL),
-		WithHTTPClient(&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true, //nolint:gosec //No
-				},
-			},
-		}),
-		WithPersonalAccessToken(personalAccessToken),
-	)
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/transports/%s", accountId, workspaceID, transportID)),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, transportDeleteResponse),
-		),
-	)
-
-	data, err := cli.DeleteTransport(
-		context.Background(),
-		workspaceID,
-		transportID.String(),
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
-	)
-
-	g.Expect(err.Error()).Should(Equal(ErrDeletionAdministrativeState.Error()))
 	g.Expect(data).Should(BeNil())
 }
