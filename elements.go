@@ -39,11 +39,11 @@ type Element interface {
 	GetState() models.AdministrativeState
 }
 
-func WaitUntilFinishedTask[T Element](ctx context.Context, client *Client, workspaceID, elementID string, waiterOptions models.AdministrativeState, funcToCall func(context.Context, *Client, string, string, models.AdministrativeState) (T, bool)) (T, bool) {
+func WaitUntilFinishedTask[T Element](ctx context.Context, client *Client, workspaceID, elementID string, waiterOptions models.AdministrativeState, getElement func(context.Context, *Client, string, string, models.AdministrativeState) (T, bool)) (T, bool) {
 	var lastElement T
 	for i := 0; i < client.poll.maxRetry; i++ {
-		// Retrieve the element and check if it is in the required administrative state
-		element, finishedTask := funcToCall(ctx, client, workspaceID, elementID, waiterOptions)
+		// retrieve the element and check if it is in the required administrative state
+		element, finishedTask := getElement(ctx, client, workspaceID, elementID, waiterOptions)
 		lastElement = element
 		if finishedTask {
 			return lastElement, true

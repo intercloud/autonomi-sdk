@@ -69,6 +69,12 @@ func (c *Client) CreateAttachment(ctx context.Context, payload models.CreateAtta
 		var success bool
 		attachmentPolled, success = WaitUntilFinishedTask(ctx, c, workspaceID, attachment.Data.ID.String(), models.AdministrativeStateDeployed, checkAttachmentFinishedTask)
 		if !success {
+			// if attachment creation operation failed then we try to delete it
+			if attachmentPolled != nil {
+				if _, err := c.DeleteAttachment(ctx, workspaceID, attachmentPolled.ID.String()); err != nil {
+					return nil, fmt.Errorf("Attachment did not reach '%s' state in time and cannot be reverted. attachment_id is '%s'", models.AdministrativeStateDeployed, attachmentPolled.ID)
+				}
+			}
 			return nil, fmt.Errorf("Attachment did not reach '%s' state in time.", models.AdministrativeStateDeployed)
 		}
 	}

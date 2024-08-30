@@ -69,6 +69,12 @@ func (c *Client) CreateNode(ctx context.Context, payload models.CreateNode, work
 		var success bool
 		nodePolled, success = WaitUntilFinishedTask(ctx, c, workspaceID, node.Data.ID.String(), models.AdministrativeStateDeployed, checkNodeFinishedTask)
 		if !success {
+			// if node creation operation failed then we try to delete it
+			if nodePolled != nil {
+				if _, err := c.DeleteNode(ctx, workspaceID, nodePolled.ID.String()); err != nil {
+					return nil, fmt.Errorf("Node did not reach '%s' state in time and cannot be reverted. node_id is '%s'", models.AdministrativeStateDeployed, nodePolled.ID)
+				}
+			}
 			return nil, fmt.Errorf("Node did not reach '%s' state in time.", models.AdministrativeStateDeployed)
 		}
 	}
