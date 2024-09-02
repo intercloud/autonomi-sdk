@@ -69,6 +69,12 @@ func (c *Client) CreateTransport(ctx context.Context, payload models.CreateTrans
 		var success bool
 		transportPolled, success = WaitUntilFinishedTask(ctx, c, workspaceID, transport.Data.ID.String(), models.AdministrativeStateDeployed, checkTransportFinishedTask)
 		if !success {
+			// if transport creation operation failed then we try to delete it
+			if transportPolled != nil {
+				if _, err := c.DeleteTransport(ctx, workspaceID, transportPolled.ID.String()); err != nil {
+					return nil, fmt.Errorf("Transport did not reach '%s' state in time and cannot be reverted. transport_id is '%s'", models.AdministrativeStateDeployed, transportPolled.ID)
+				}
+			}
 			return nil, fmt.Errorf("Transport did not reach '%s' state in time.", models.AdministrativeStateDeployed)
 		}
 	}
