@@ -10,7 +10,7 @@ type PhysicalPort struct {
 	AccountID          string              `json:"accountId"`
 	Product            PhysicalPortProduct `json:"product"`
 	AvailableBandwidth int                 `json:"availableBandwidth"`
-	State              string              `json:"administrativeState"`
+	State              AdministrativeState `json:"administrativeState"`
 	UsedVLANs          []int64             `json:"usedVlans"`
 }
 
