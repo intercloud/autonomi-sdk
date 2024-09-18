@@ -52,6 +52,12 @@ type ProviderCloudConfig struct {
 	ServiceKey string `json:"serviceKey,omitempty"`
 }
 
+type ServiceKey struct {
+	ID             string    `json:"id,omitempty"`
+	ExpirationDate time.Time `json:"expirationDate,omitempty"`
+	Name           string    `json:"name,omitempty"`
+}
+
 type Node struct {
 	BaseModel
 	WorkspaceID    string               `json:"workspaceId"`
@@ -67,6 +73,7 @@ type Node struct {
 	DxconID        string               `json:"dxconId,omitempty"`
 	Error          *SupportError        `json:"error,omitempty"`
 	PhysicalPort   *PhysicalPort        `json:"physicalPort,omitempty"`
+	ServiceKey     *ServiceKey          `json:"serviceKey,omitempty"`
 }
 
 func (n *Node) GetState() AdministrativeState {
