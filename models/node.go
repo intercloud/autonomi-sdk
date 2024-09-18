@@ -92,6 +92,6 @@ type CreateNode struct {
 	Type           NodeType             `json:"type" binding:"required"`
 	Product        AddProduct           `json:"product" binding:"required"`
 	ProviderConfig *ProviderCloudConfig `json:"providerConfig" binding:"required_if=Type cloud"`
-	PhysicalPortID *uuid.UUID           `json:"physicalPortId,omitempty" binding:"required_if=Type access"`
-	Vlan           int64                `json:"vlan,omitempty" binding:"required_if=Type access"`
+	PhysicalPortID *uuid.UUID           `json:"physicalPortId,omitempty"`
+	Vlan           int64                `json:"vlan,omitempty"`
 }
