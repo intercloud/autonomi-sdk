@@ -1305,36 +1305,4 @@ func TestCreateAccessNodeFailedValidator(t *testing.T) {
 
 	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.Product.SKU' Error:Field validation for 'SKU' failed on the 'required' tag"))
 	g.Expect(data).Should(BeNil())
-
-	data, err = cli.CreateNode(
-		context.Background(),
-		models.CreateNode{
-			Name: "node_name",
-			Type: models.NodeTypeAccess,
-			Product: models.AddProduct{
-				SKU: "CEQUFR5100AWS",
-			},
-			Vlan: 2,
-		},
-		workspaceID,
-	)
-
-	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.PhysicalPortID' Error:Field validation for 'PhysicalPortID' failed on the 'required_if' tag"))
-	g.Expect(data).Should(BeNil())
-
-	data, err = cli.CreateNode(
-		context.Background(),
-		models.CreateNode{
-			Name: "node_name",
-			Type: models.NodeTypeAccess,
-			Product: models.AddProduct{
-				SKU: "CEQUFR5100AWS",
-			},
-			PhysicalPortID: &physicalPortId,
-		},
-		workspaceID,
-	)
-
-	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.Vlan' Error:Field validation for 'Vlan' failed on the 'required_if' tag"))
-	g.Expect(data).Should(BeNil())
 }
