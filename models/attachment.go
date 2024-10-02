@@ -23,3 +23,7 @@ type CreateAttachment struct {
 	NodeID      string `json:"nodeId" binding:"required"`
 	TransportID string `json:"transportId" binding:"required"`
 }
+
+func (a *Attachment) GetState() AdministrativeState {
+	return a.State
+}

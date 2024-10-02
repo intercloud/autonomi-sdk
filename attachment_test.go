@@ -77,6 +77,18 @@ var (
 		},
 	}
 
+	attachmentDeleteErrorResponse = models.AttachmentResponse{
+		Data: models.Attachment{
+			BaseModel: models.BaseModel{
+				ID: attachmentID,
+			},
+			WorkspaceID: workspaceID,
+			NodeID:      nodeID.String(),
+			TransportID: transportID.String(),
+			State:       models.AdministrativeStateDeleteError,
+		},
+	}
+
 	attachmentDeleteResponse = models.AttachmentResponse{
 		Data: models.Attachment{},
 	}
@@ -139,7 +151,6 @@ func TestCreateAttachmentSuccessfully(t *testing.T) {
 			TransportID: transportID.String(),
 		},
 		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
@@ -211,11 +222,83 @@ func TestCreateAttachmentWaitForStateDeployed(t *testing.T) {
 			TransportID: transportID.String(),
 		},
 		workspaceID,
+		WithWaitUntilElementDeployed(),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 	g.Expect(*data).Should(Equal(result.Data))
 }
+
+func TestCreateAttachmentCreationError(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	cli.poll.maxRetry = 2
+	cli.poll.retryInterval = 1 * time.Second
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments", accountId, workspaceID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusAccepted, attachmentCreateResponse),
+		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, attachmentCreateResponse),
+		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, attachmentCreationErrorResponse),
+		),
+	)
+
+	data, err := cli.CreateAttachment(
+		context.Background(),
+		models.CreateAttachment{
+			NodeID:      nodeID.String(),
+			TransportID: transportID.String(),
+		},
+		workspaceID,
+		WithWaitUntilElementDeployed(),
+	)
+
+	g.Expect(err).ShouldNot(BeNil())
+	g.Expect(data).Should(BeNil())
+}
+
 func TestCreateAttachmentWaitForStateTimeout(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
@@ -273,6 +356,7 @@ func TestCreateAttachmentWaitForStateTimeout(t *testing.T) {
 			TransportID: transportID.String(),
 		},
 		workspaceID,
+		WithWaitUntilElementDeployed(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
@@ -335,6 +419,7 @@ func TestCreateAttachmentPollNotFound(t *testing.T) {
 			TransportID: transportID.String(),
 		},
 		workspaceID,
+		WithWaitUntilElementDeployed(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
@@ -449,55 +534,6 @@ func TestCreateAttachmentFailedValidator(t *testing.T) {
 	)
 
 	g.Expect(err.Error()).Should(Equal("Key: 'CreateAttachment.NodeID' Error:Field validation for 'NodeID' failed on the 'required' tag"))
-	g.Expect(data).Should(BeNil())
-}
-
-func TestCreateAttachmentWrongAdministrativeState(t *testing.T) {
-	g := NewWithT(t)
-	gh := ghttp.NewGHTTPWithGomega(g)
-
-	server := ghttp.NewServer()
-	defer server.Close()
-
-	serverURL, err := url.Parse(server.URL())
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, "/users/self"),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
-				AccountID: uuid.MustParse(accountId),
-			}),
-		),
-	)
-
-	cli, err := NewClient(
-		true,
-		WithHostURL(serverURL),
-		WithHTTPClient(&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true, //nolint:gosec //No
-				},
-			},
-		}),
-		WithPersonalAccessToken(personalAccessToken),
-	)
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	data, err := cli.CreateAttachment(
-		context.Background(),
-
-		models.CreateAttachment{
-			NodeID:      nodeID.String(),
-			TransportID: transportID.String(),
-		},
-		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateDeleteProceed),
-	)
-
-	g.Expect(err.Error()).Should(Equal(ErrCreationAdministrativeState.Error()))
 	g.Expect(data).Should(BeNil())
 }
 
@@ -714,7 +750,6 @@ func TestDeleteAttachmentSuccessfully(t *testing.T) {
 		context.Background(),
 		workspaceID,
 		attachmentID.String(),
-		WithAdministrativeState(models.AdministrativeStateDeletePending),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
@@ -778,10 +813,73 @@ func TestDeleteAttachmentWaitForStateDeleted(t *testing.T) {
 		context.Background(),
 		workspaceID,
 		attachmentID.String(),
+		WithWaitUntilElementUndeployed(),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 	g.Expect(*data).Should(Equal(result.Data))
+}
+
+func TestDeleteAttachmentDeleteError(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	cli.poll.maxRetry = 1
+	cli.poll.retryInterval = 1 * time.Second
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusAccepted, attachmentDeletePendingResponse),
+		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments/%s", accountId, workspaceID, attachmentID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, attachmentDeleteErrorResponse),
+		),
+	)
+
+	data, err := cli.DeleteAttachment(
+		context.Background(),
+		workspaceID,
+		attachmentID.String(),
+		WithWaitUntilElementUndeployed(),
+	)
+
+	g.Expect(err).ShouldNot(BeNil())
+	g.Expect(data).Should(BeNil())
 }
 
 func TestDeleteAttachmentWaitForStateTimeout(t *testing.T) {
@@ -839,6 +937,7 @@ func TestDeleteAttachmentWaitForStateTimeout(t *testing.T) {
 		context.Background(),
 		workspaceID,
 		attachmentID.String(),
+		WithWaitUntilElementUndeployed(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
@@ -893,50 +992,5 @@ func TestDeleteAttachmentForbidden(t *testing.T) {
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
-	g.Expect(data).Should(BeNil())
-}
-
-func TestDeleteAttachmentWrongAdministrativeState(t *testing.T) {
-	g := NewWithT(t)
-	gh := ghttp.NewGHTTPWithGomega(g)
-
-	server := ghttp.NewServer()
-	defer server.Close()
-
-	serverURL, err := url.Parse(server.URL())
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, "/users/self"),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
-				AccountID: uuid.MustParse(accountId),
-			}),
-		),
-	)
-
-	cli, err := NewClient(
-		true,
-		WithHostURL(serverURL),
-		WithHTTPClient(&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true, //nolint:gosec //No
-				},
-			},
-		}),
-		WithPersonalAccessToken(personalAccessToken),
-	)
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	data, err := cli.DeleteAttachment(
-		context.Background(),
-		workspaceID,
-		attachmentID.String(),
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
-	)
-
-	g.Expect(err.Error()).Should(Equal(ErrDeletionAdministrativeState.Error()))
 	g.Expect(data).Should(BeNil())
 }

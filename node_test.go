@@ -20,9 +20,10 @@ const (
 )
 
 var (
-	nodeID = uuid.MustParse("20ea29c9-f892-4aaf-8907-de79fa83e7bb")
+	nodeID         = uuid.MustParse("20ea29c9-f892-4aaf-8907-de79fa83e7bb")
+	physicalPortId = uuid.MustParse("30ea29c9-f892-4aaf-8907-de79fa83e7cc")
 
-	nodeCreateResponse = models.NodeResponse{
+	cloudNodeCreateResponse = models.NodeResponse{
 		Data: models.Node{
 			BaseModel: models.BaseModel{
 				ID: nodeID,
@@ -33,7 +34,7 @@ var (
 			Type:        models.NodeTypeCloud,
 			Product: models.NodeProduct{
 				Product: models.Product{
-					Provider:  "EQUINIX",
+					Provider:  models.ProviderTypeEquinix,
 					Duration:  0,
 					Location:  "EQUINIX FR5",
 					Bandwidth: 100,
@@ -54,6 +55,38 @@ var (
 		},
 	}
 
+	accessNodeCreateResponse = models.NodeResponse{
+		Data: models.Node{
+			BaseModel: models.BaseModel{
+				ID: nodeID,
+			},
+			WorkspaceID: workspaceID,
+			Name:        "node_name",
+			State:       models.AdministrativeStateCreationPending,
+			Type:        models.NodeTypeAccess,
+			Product: models.NodeProduct{
+				Product: models.Product{
+					Provider:  models.ProviderTypeEquinix,
+					Duration:  0,
+					Location:  "EQUINIX FR5",
+					Bandwidth: 100,
+					PriceNRC:  0,
+					PriceMRC:  0,
+					CostNRC:   0,
+					CostMRC:   0,
+					SKU:       "CEQUFR5100AWS",
+				},
+				Type: models.AccessProductTypePhysical,
+			},
+			Vlan: 2,
+			PhysicalPort: &models.PhysicalPort{
+				BaseModel: models.BaseModel{
+					ID: attachmentID,
+				},
+			},
+		},
+	}
+
 	nodeDeployedResponse = models.NodeResponse{
 		Data: models.Node{
 			BaseModel: models.BaseModel{
@@ -65,7 +98,7 @@ var (
 			Type:        models.NodeTypeCloud,
 			Product: models.NodeProduct{
 				Product: models.Product{
-					Provider:  "EQUINIX",
+					Provider:  models.ProviderTypeEquinix,
 					Duration:  0,
 					Location:  "EQUINIX FR5",
 					Bandwidth: 100,
@@ -112,7 +145,7 @@ var (
 			Type:        models.NodeTypeCloud,
 			Product: models.NodeProduct{
 				Product: models.Product{
-					Provider:  "EQUINIX",
+					Provider:  models.ProviderTypeEquinix,
 					Duration:  0,
 					Location:  "EQUINIX FR5",
 					Bandwidth: 100,
@@ -144,7 +177,7 @@ var (
 			Type:        models.NodeTypeCloud,
 			Product: models.NodeProduct{
 				Product: models.Product{
-					Provider:  "EQUINIX",
+					Provider:  models.ProviderTypeEquinix,
 					Duration:  0,
 					Location:  "EQUINIX FR5",
 					Bandwidth: 100,
@@ -170,7 +203,7 @@ var (
 	}
 )
 
-func TestCreateNodeSuccessfully(t *testing.T) {
+func TestCreateCloudNodeSuccessfully(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -205,18 +238,18 @@ func TestCreateNodeSuccessfully(t *testing.T) {
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := nodeCreateResponse
+	result := cloudNodeCreateResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes", accountId, workspaceID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, cloudNodeCreateResponse),
 		),
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, nodeCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, cloudNodeCreateResponse),
 		),
 	)
 
@@ -233,14 +266,13 @@ func TestCreateNodeSuccessfully(t *testing.T) {
 			},
 		},
 		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 	g.Expect(*data).Should(Equal(result.Data))
 }
 
-func TestCreateNodeWaitForStateDeployed(t *testing.T) {
+func TestCreateCloudNodeWaitForStateDeployed(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -284,12 +316,12 @@ func TestCreateNodeWaitForStateDeployed(t *testing.T) {
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes", accountId, workspaceID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, cloudNodeCreateResponse),
 		),
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, nodeCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, cloudNodeCreateResponse),
 		),
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
@@ -311,13 +343,14 @@ func TestCreateNodeWaitForStateDeployed(t *testing.T) {
 			},
 		},
 		workspaceID,
+		WithWaitUntilElementDeployed(),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
 	g.Expect(*data).Should(Equal(result.Data))
 }
 
-func TestCreateNodeWaitForStateTimeout(t *testing.T) {
+func TestCreateCloudNodeWaitForStateTimeout(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -358,12 +391,12 @@ func TestCreateNodeWaitForStateTimeout(t *testing.T) {
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes", accountId, workspaceID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, cloudNodeCreateResponse),
 		),
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, nodeCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, cloudNodeCreateResponse),
 		),
 	)
 
@@ -380,12 +413,13 @@ func TestCreateNodeWaitForStateTimeout(t *testing.T) {
 			},
 		},
 		workspaceID,
+		WithWaitUntilElementDeployed(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
 }
 
-func TestCreateNodePollNotFound(t *testing.T) {
+func TestCreateCloudNodePollNotFound(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -426,7 +460,7 @@ func TestCreateNodePollNotFound(t *testing.T) {
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes", accountId, workspaceID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusAccepted, cloudNodeCreateResponse),
 		),
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
@@ -448,12 +482,13 @@ func TestCreateNodePollNotFound(t *testing.T) {
 			},
 		},
 		workspaceID,
+		WithWaitUntilElementDeployed(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
 }
 
-func TestCreateNodeForbidden(t *testing.T) {
+func TestCreateCloudNodeForbidden(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -514,7 +549,7 @@ func TestCreateNodeForbidden(t *testing.T) {
 	g.Expect(data).Should(BeNil())
 }
 
-func TestCreateNodeFailedValidator(t *testing.T) {
+func TestCreateCloudNodeFailedValidator(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -614,60 +649,6 @@ func TestCreateNodeFailedValidator(t *testing.T) {
 	g.Expect(data).Should(BeNil())
 }
 
-func TestCreateNodeWrongAdministrativeState(t *testing.T) {
-	g := NewWithT(t)
-	gh := ghttp.NewGHTTPWithGomega(g)
-
-	server := ghttp.NewServer()
-	defer server.Close()
-
-	serverURL, err := url.Parse(server.URL())
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, "/users/self"),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
-				AccountID: uuid.MustParse(accountId),
-			}),
-		),
-	)
-
-	cli, err := NewClient(
-		true,
-		WithHostURL(serverURL),
-		WithHTTPClient(&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true, //nolint:gosec //No
-				},
-			},
-		}),
-		WithPersonalAccessToken(personalAccessToken),
-	)
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	data, err := cli.CreateNode(
-		context.Background(),
-		models.CreateNode{
-			Name: "node_name",
-			Type: models.NodeTypeCloud,
-			Product: models.AddProduct{
-				SKU: "CEQUFR5100AWS",
-			},
-			ProviderConfig: &models.ProviderCloudConfig{
-				AccountID: "456789",
-			},
-		},
-		workspaceID,
-		WithAdministrativeState(models.AdministrativeStateDeleteProceed),
-	)
-
-	g.Expect(err.Error()).Should(Equal(ErrCreationAdministrativeState.Error()))
-	g.Expect(data).Should(BeNil())
-}
-
 func TestGetNodeSuccessfully(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
@@ -702,13 +683,13 @@ func TestGetNodeSuccessfully(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	result := nodeCreateResponse
+	result := cloudNodeCreateResponse
 
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
 			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, nodeCreateResponse),
+			gh.RespondWithJSONEncoded(http.StatusOK, cloudNodeCreateResponse),
 		),
 	)
 
@@ -993,7 +974,6 @@ func TestDeleteNodeSuccessfully(t *testing.T) {
 		context.Background(),
 		workspaceID,
 		nodeID.String(),
-		WithAdministrativeState(models.AdministrativeStateDeletePending),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
@@ -1057,6 +1037,7 @@ func TestDeleteNodeWaitForStateDeleted(t *testing.T) {
 		context.Background(),
 		workspaceID,
 		nodeID.String(),
+		WithWaitUntilElementUndeployed(),
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
@@ -1118,6 +1099,7 @@ func TestDeleteNodeWaitForStateTimeout(t *testing.T) {
 		context.Background(),
 		workspaceID,
 		nodeID.String(),
+		WithWaitUntilElementUndeployed(),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
@@ -1175,7 +1157,75 @@ func TestDeleteNodeForbidden(t *testing.T) {
 	g.Expect(data).Should(BeNil())
 }
 
-func TestDeleteNodeWrongAdministrativeState(t *testing.T) {
+func TestCreateAccessNodeSuccessfully(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	result := accessNodeCreateResponse
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes", accountId, workspaceID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusAccepted, accessNodeCreateResponse),
+		),
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, accessNodeCreateResponse),
+		),
+	)
+
+	data, err := cli.CreateNode(
+		context.Background(),
+		models.CreateNode{
+			Name: "node_name",
+			Type: models.NodeTypeAccess,
+			Product: models.AddProduct{
+				SKU: "CEQUFR5100AWS",
+			},
+			PhysicalPortID: &physicalPortId,
+			Vlan:           2,
+		},
+		workspaceID,
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+	g.Expect(*data).Should(Equal(result.Data))
+}
+
+func TestCreateAccessNodeFailedValidator(t *testing.T) {
 	g := NewWithT(t)
 	gh := ghttp.NewGHTTPWithGomega(g)
 
@@ -1209,21 +1259,50 @@ func TestDeleteNodeWrongAdministrativeState(t *testing.T) {
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s/nodes/%s", accountId, workspaceID, nodeID)),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusAccepted, nodeDeleteResponse),
-		),
-	)
-
-	data, err := cli.DeleteNode(
+	data, err := cli.CreateNode(
 		context.Background(),
+		models.CreateNode{
+			Type: models.NodeTypeAccess,
+			Product: models.AddProduct{
+				SKU: "CEQUFR5100AWS",
+			},
+			PhysicalPortID: &physicalPortId,
+			Vlan:           2,
+		},
 		workspaceID,
-		nodeID.String(),
-		WithAdministrativeState(models.AdministrativeStateCreationPending),
 	)
 
-	g.Expect(err.Error()).Should(Equal(ErrDeletionAdministrativeState.Error()))
+	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.Name' Error:Field validation for 'Name' failed on the 'required' tag"))
+	g.Expect(data).Should(BeNil())
+
+	data, err = cli.CreateNode(
+		context.Background(),
+		models.CreateNode{
+			Name: "node_name",
+			Product: models.AddProduct{
+				SKU: "CEQUFR5100AWS",
+			},
+			PhysicalPortID: &physicalPortId,
+			Vlan:           2,
+		},
+		workspaceID,
+	)
+
+	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.Type' Error:Field validation for 'Type' failed on the 'required' tag"))
+	g.Expect(data).Should(BeNil())
+
+	data, err = cli.CreateNode(
+		context.Background(),
+		models.CreateNode{
+			Name:           "node_name",
+			Type:           models.NodeTypeAccess,
+			Product:        models.AddProduct{},
+			PhysicalPortID: &physicalPortId,
+			Vlan:           2,
+		},
+		workspaceID,
+	)
+
+	g.Expect(err.Error()).Should(Equal("Key: 'CreateNode.Product.SKU' Error:Field validation for 'SKU' failed on the 'required' tag"))
 	g.Expect(data).Should(BeNil())
 }
