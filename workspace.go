@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/intercloud/autonomi-sdk/models"
 )
 
@@ -39,8 +40,8 @@ func (c *Client) CreateWorkspace(ctx context.Context, payload models.CreateWorks
 	return &workspace.Data, nil
 }
 
-func (c *Client) ListWorkspaces(ctx context.Context) ([]models.Workspace, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/accounts/%s/workspaces", c.hostURL, c.accountID), nil)
+func (c *Client) ListWorkspaces(ctx context.Context, accountID uuid.UUID) ([]models.Workspace, error) {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/accounts/%s/workspaces", c.hostURL, accountID), nil)
 	if err != nil {
 		return nil, err
 	}
