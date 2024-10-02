@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/intercloud/autonomi-sdk/models"
 )
 
-func (c *Client) ListUsers(ctx context.Context) (models.Users, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/accounts/%s/users", c.hostURL, c.accountID), nil)
+func (c *Client) ListUsers(ctx context.Context, accountID uuid.UUID) (models.Users, error) {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/accounts/%s/users", c.hostURL, accountID), nil)
 	if err != nil {
 		return nil, err
 	}
