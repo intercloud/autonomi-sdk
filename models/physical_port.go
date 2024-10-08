@@ -12,6 +12,7 @@ type PhysicalPort struct {
 	AvailableBandwidth int                 `json:"availableBandwidth"`
 	State              AdministrativeState `json:"administrativeState"`
 	UsedVLANs          []int64             `json:"usedVlans"`
+	LOAAccessURL       string              `json:"loaAccessUrl"`
 }
 
 type PhysicalPortSingleResponse struct {
