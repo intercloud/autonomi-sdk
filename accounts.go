@@ -65,8 +65,7 @@ func (c *Client) DeleteAccount(ctx context.Context, accountID uuid.UUID) error {
 		return err
 	}
 
-	_, err = c.doRequest(req)
-	if err != nil {
+	if _, err = c.doRequest(req); err != nil {
 		return err
 	}
 

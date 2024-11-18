@@ -109,8 +109,7 @@ func (c *Client) DeleteWorkspace(ctx context.Context, workspaceID string) error 
 		return err
 	}
 
-	_, err = c.doRequest(req)
-	if err != nil {
+	if _, err = c.doRequest(req); err != nil {
 		return err
 	}
 
