@@ -10,7 +10,7 @@ Go 1.22 or higher
 
 ### Install Autonomi Go SDK
 
-1. Use `go get` to install the latest version of the Milvus Go SDK and dependencies:
+1. Use `go get` to install the latest version of the Autonomi Go SDK and dependencies:
 
    ```shell
    go get -u https://github.com/intercloud/autonomi-sdk
