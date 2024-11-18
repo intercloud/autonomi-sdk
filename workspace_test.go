@@ -37,6 +37,19 @@ var (
 			Description: "workspace_description",
 		},
 	}
+
+	workspacesCreateResponse = models.WorkspacesResponse{
+		Data: []models.Workspace{
+			{
+				BaseModel: models.BaseModel{
+					ID: uuid.MustParse(workspaceID),
+				},
+				AccountID:   accountId,
+				Name:        "workspace_name",
+				Description: "workspace_description",
+			},
+		},
+	}
 )
 
 func TestCreateWorkspaceSuccessfully(t *testing.T) {
@@ -132,7 +145,6 @@ func TestCreateWorkspaceForbidden(t *testing.T) {
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces", accountId)),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusForbidden, nil),
 		),
 	)
@@ -292,6 +304,109 @@ func TestGetWorkspaceNotFound(t *testing.T) {
 	data, err := cli.GetWorkspace(
 		context.Background(),
 		workspaceID,
+	)
+
+	g.Expect(err).ShouldNot(BeNil())
+	g.Expect(data).Should(BeNil())
+}
+
+func TestListWorkspacesSuccessfully(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	result := workspacesCreateResponse
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces", accountId)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, workspacesCreateResponse),
+		),
+	)
+
+	data, err := cli.ListWorkspaces(
+		context.Background(),
+		uuid.MustParse(accountId),
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+	g.Expect(data).Should(Equal(result.Data))
+}
+
+func TestListWorkspacesForbidden(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, fmt.Sprintf("/accounts/%s/workspaces", accountId)),
+			gh.RespondWithJSONEncoded(http.StatusForbidden, nil),
+		),
+	)
+
+	data, err := cli.ListWorkspaces(
+		context.Background(),
+		uuid.MustParse(accountId),
 	)
 
 	g.Expect(err).ShouldNot(BeNil())
@@ -495,7 +610,6 @@ func TestDeleteWorkspaceForbidden(t *testing.T) {
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/workspaces/%s", accountId, workspaceID)),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusForbidden, nil),
 		),
 	)

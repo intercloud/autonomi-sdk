@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/intercloud/autonomi-sdk/models"
 )
 
@@ -39,6 +40,25 @@ func (c *Client) CreateWorkspace(ctx context.Context, payload models.CreateWorks
 	return &workspace.Data, nil
 }
 
+func (c *Client) ListWorkspaces(ctx context.Context, accountID uuid.UUID) ([]models.Workspace, error) {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/accounts/%s/workspaces", c.hostURL, accountID), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.doRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	workspaces := models.WorkspacesResponse{}
+	if err = json.Unmarshal(resp, &workspaces); err != nil {
+		return nil, err
+	}
+
+	return workspaces.Data, nil
+}
+
 func (c *Client) GetWorkspace(ctx context.Context, workspaceID string) (*models.Workspace, error) {
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/accounts/%s/workspaces/%s", c.hostURL, c.accountID, workspaceID), nil)
 	if err != nil {
@@ -51,8 +71,7 @@ func (c *Client) GetWorkspace(ctx context.Context, workspaceID string) (*models.
 	}
 
 	workspace := models.WorkspaceResponse{}
-	err = json.Unmarshal(resp, &workspace)
-	if err != nil {
+	if err = json.Unmarshal(resp, &workspace); err != nil {
 		return nil, err
 	}
 
@@ -90,8 +109,7 @@ func (c *Client) DeleteWorkspace(ctx context.Context, workspaceID string) error 
 		return err
 	}
 
-	_, err = c.doRequest(req)
-	if err != nil {
+	if _, err = c.doRequest(req); err != nil {
 		return err
 	}
 

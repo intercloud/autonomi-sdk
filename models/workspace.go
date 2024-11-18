@@ -20,3 +20,7 @@ type Workspace struct {
 type WorkspaceResponse struct {
 	Data Workspace `json:"data"`
 }
+
+type WorkspacesResponse struct {
+	Data []Workspace `json:"data"`
+}
