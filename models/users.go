@@ -18,3 +18,13 @@ type User struct {
 }
 
 type Users []User
+
+type CreateUser struct {
+	Name      string `json:"name" binding:"required"`
+	Email     string `json:"email" binding:"required"`
+	ProfileId string `json:"profileId"`
+}
+
+type UserResponse struct {
+	Data User `json:"data"`
+}
