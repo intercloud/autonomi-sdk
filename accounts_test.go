@@ -24,9 +24,11 @@ var (
 		Country: "country",
 	}
 
+	accountID = uuid.MustParse("4d3fce09-2318-4715-97c0-30189a559cc9")
+
 	accountCreateResponse = models.Account{
 		BaseModel: models.BaseModel{
-			ID: attachmentID,
+			ID: accountID,
 		},
 		Name:    "account_name",
 		Address: "street",

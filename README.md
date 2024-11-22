@@ -48,3 +48,4 @@ Autonomi SDK allows to :
 - Create, Read, Update and Delete a **Transport**
 - Create, Read and Delete an **Attachment**
 - Create, Read and Delete a **Physical Port**
+- Create, Read and Delete an **Account**
