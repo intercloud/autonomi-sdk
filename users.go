@@ -22,8 +22,7 @@ func (c *Client) ListUsers(ctx context.Context, accountID uuid.UUID) (models.Use
 	}
 
 	users := models.Users{}
-	err = json.Unmarshal(resp, &users)
-	if err != nil {
+	if err = json.Unmarshal(resp, &users); err != nil {
 		return nil, err
 	}
 

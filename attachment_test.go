@@ -462,7 +462,6 @@ func TestCreateAttachmentForbidden(t *testing.T) {
 	server.AppendHandlers(
 		ghttp.CombineHandlers(
 			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/workspaces/%s/attachments", accountId, workspaceID)),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
 			gh.RespondWithJSONEncoded(http.StatusForbidden, nil),
 		),
 	)

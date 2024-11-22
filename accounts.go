@@ -33,8 +33,7 @@ func (c *Client) CreateAccount(ctx context.Context, payload models.Account) (*mo
 	}
 
 	account := models.Account{}
-	err = json.Unmarshal(resp, &account)
-	if err != nil {
+	if err = json.Unmarshal(resp, &account); err != nil {
 		return nil, err
 	}
 
@@ -53,8 +52,7 @@ func (c *Client) ListAccounts(ctx context.Context) (models.Accounts, error) {
 	}
 
 	accounts := models.Accounts{}
-	err = json.Unmarshal(resp, &accounts)
-	if err != nil {
+	if err = json.Unmarshal(resp, &accounts); err != nil {
 		return nil, err
 	}
 
@@ -67,8 +65,7 @@ func (c *Client) DeleteAccount(ctx context.Context, accountID uuid.UUID) error {
 		return err
 	}
 
-	_, err = c.doRequest(req)
-	if err != nil {
+	if _, err = c.doRequest(req); err != nil {
 		return err
 	}
 

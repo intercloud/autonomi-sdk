@@ -52,8 +52,7 @@ func (c *Client) ListWorkspaces(ctx context.Context, accountID uuid.UUID) ([]mod
 	}
 
 	workspaces := models.WorkspacesResponse{}
-	err = json.Unmarshal(resp, &workspaces)
-	if err != nil {
+	if err = json.Unmarshal(resp, &workspaces); err != nil {
 		return nil, err
 	}
 
@@ -72,8 +71,7 @@ func (c *Client) GetWorkspace(ctx context.Context, workspaceID string) (*models.
 	}
 
 	workspace := models.WorkspaceResponse{}
-	err = json.Unmarshal(resp, &workspace)
-	if err != nil {
+	if err = json.Unmarshal(resp, &workspace); err != nil {
 		return nil, err
 	}
 
@@ -111,8 +109,7 @@ func (c *Client) DeleteWorkspace(ctx context.Context, workspaceID string) error 
 		return err
 	}
 
-	_, err = c.doRequest(req)
-	if err != nil {
+	if _, err = c.doRequest(req); err != nil {
 		return err
 	}
 
