@@ -28,6 +28,19 @@ var (
 		IsAdmin:   true,
 	}
 
+	userCreateResponse = models.UserResponse{
+		Data: models.User{
+			BaseModel: models.BaseModel{
+				ID: userId,
+			},
+			Name:      "name",
+			Email:     "email@gmail.com",
+			Activated: false,
+			AccountID: accountID,
+			IsAdmin:   false,
+		},
+	}
+
 	usersListResponse = models.Users{
 		user,
 	}
@@ -143,4 +156,60 @@ func TestListForbidden(t *testing.T) {
 	// test results
 	g.Expect(err).ShouldNot(BeNil())
 	g.Expect(data).Should(BeNil())
+}
+
+func TestCreateUserSuccessfully(t *testing.T) {
+	g := NewWithT(t)
+	gh := ghttp.NewGHTTPWithGomega(g)
+
+	server := ghttp.NewServer()
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL())
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodGet, "/users/self"),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
+				AccountID: uuid.MustParse(accountId),
+			}),
+		),
+	)
+
+	cli, err := NewClient(
+		true,
+		WithHostURL(serverURL),
+		WithHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec //No
+				},
+			},
+		}),
+		WithPersonalAccessToken(personalAccessToken),
+	)
+	g.Expect(err).ShouldNot(HaveOccurred())
+
+	result := userCreateResponse
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/users", accountId)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, userCreateResponse),
+		),
+	)
+
+	data, err := cli.CreateUser(
+		context.Background(),
+		models.CreateUser{
+			Name:  "name",
+			Email: "email@gmail.com",
+		},
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+	g.Expect(*data).Should(Equal(result.Data))
 }
