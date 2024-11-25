@@ -178,3 +178,19 @@ func TestCreateUserInvalidPayload(t *testing.T) {
 	)
 	g.Expect(err).Should(HaveOccurred())
 }
+
+func TestDeleteUserSuccessfully(t *testing.T) {
+	tearDownTest := setupTest(t)
+	defer tearDownTest(t)
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodDelete, fmt.Sprintf("/accounts/%s/users/%s", accountId, userId)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusNoContent, nil),
+		),
+	)
+
+	err := cli.DeleteUser(context.Background(), userId.String())
+	g.Expect(err).ShouldNot(HaveOccurred())
+}

@@ -58,3 +58,16 @@ func (c *Client) ListUsers(ctx context.Context, accountID uuid.UUID) (models.Use
 
 	return users, nil
 }
+
+func (c *Client) DeleteUser(ctx context.Context, userID string) error {
+	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/accounts/%s/users/%s", c.hostURL, c.accountID, userID), nil)
+	if err != nil {
+		return err
+	}
+
+	if _, err = c.doRequest(req); err != nil {
+		return err
+	}
+
+	return nil
+}
