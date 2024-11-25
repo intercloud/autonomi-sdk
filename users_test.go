@@ -35,17 +35,15 @@ var (
 		IsAdmin:   true,
 	}
 
-	userCreateResponse = models.UserResponse{
-		Data: models.User{
-			BaseModel: models.BaseModel{
-				ID: userId,
-			},
-			Name:      "name",
-			Email:     "email@gmail.com",
-			Activated: false,
-			AccountID: accountID,
-			IsAdmin:   false,
+	userCreateResponse = models.User{
+		BaseModel: models.BaseModel{
+			ID: userId,
 		},
+		Name:      "name",
+		Email:     "email@gmail.com",
+		Activated: false,
+		AccountID: accountID,
+		IsAdmin:   false,
 	}
 
 	usersListResponse = models.Users{
@@ -164,7 +162,7 @@ func TestCreateUserSuccessfully(t *testing.T) {
 	)
 
 	g.Expect(err).ShouldNot(HaveOccurred())
-	g.Expect(*data).Should(Equal(result.Data))
+	g.Expect(*data).Should(Equal(result))
 }
 
 func TestCreateUserInvalidPayload(t *testing.T) {

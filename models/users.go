@@ -24,7 +24,3 @@ type CreateUser struct {
 	Email     string `json:"email" binding:"required"`
 	ProfileId string `json:"profileId"`
 }
-
-type UserResponse struct {
-	Data User `json:"data"`
-}

@@ -32,12 +32,12 @@ func (c *Client) CreateUser(ctx context.Context, payload models.CreateUser) (*mo
 		return nil, err
 	}
 
-	user := models.UserResponse{}
+	user := models.User{}
 	if err := json.Unmarshal(resp, &user); err != nil {
 		return nil, err
 	}
 
-	return &user.Data, nil
+	return &user, nil
 }
 
 func (c *Client) ListUsers(ctx context.Context, accountID uuid.UUID) (models.Users, error) {
