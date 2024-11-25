@@ -15,6 +15,13 @@ import (
 )
 
 var (
+	// common variables used for testing and mocking
+	g         *WithT
+	gh        *ghttp.GHTTPWithGomega
+	server    *ghttp.Server
+	serverURL *url.URL
+	cli       *Client
+
 	userId = uuid.MustParse("14bb42ef-571d-403e-a62f-d4fb9717ac6c")
 
 	user = models.User{
@@ -28,21 +35,30 @@ var (
 		IsAdmin:   true,
 	}
 
+	userCreateResponse = models.User{
+		BaseModel: models.BaseModel{
+			ID: userId,
+		},
+		Name:      "name",
+		Email:     "email@gmail.com",
+		Activated: false,
+		AccountID: accountID,
+		IsAdmin:   false,
+	}
+
 	usersListResponse = models.Users{
 		user,
 	}
 )
 
-func TestListUsers(t *testing.T) {
+func setupTest(t *testing.T) func(t *testing.T) {
 	// init testing framework
-	g := NewWithT(t)
-	gh := ghttp.NewGHTTPWithGomega(g)
+	g = NewWithT(t)
+	gh = ghttp.NewGHTTPWithGomega(g)
+	server = ghttp.NewServer()
 
-	// init server
-	server := ghttp.NewServer()
-	defer server.Close()
-
-	serverURL, err := url.Parse(server.URL())
+	var err error
+	serverURL, err = url.Parse(server.URL())
 	g.Expect(err).ShouldNot(HaveOccurred())
 
 	server.AppendHandlers(
@@ -54,8 +70,9 @@ func TestListUsers(t *testing.T) {
 			}),
 		),
 	)
+
 	// init testing http client
-	cli, err := NewClient(
+	cli, err = NewClient(
 		true,
 		WithHostURL(serverURL),
 		WithHTTPClient(&http.Client{
@@ -68,6 +85,15 @@ func TestListUsers(t *testing.T) {
 		WithPersonalAccessToken(personalAccessToken),
 	)
 	g.Expect(err).ShouldNot(HaveOccurred())
+
+	return func(t *testing.T) {
+		defer server.Close()
+	}
+}
+
+func TestListUsers(t *testing.T) {
+	tearDownTest := setupTest(t)
+	defer tearDownTest(t)
 
 	// mock testing response
 	result := usersListResponse
@@ -91,40 +117,8 @@ func TestListUsers(t *testing.T) {
 }
 
 func TestListForbidden(t *testing.T) {
-	// init testing framework
-	g := NewWithT(t)
-	gh := ghttp.NewGHTTPWithGomega(g)
-
-	// init server
-	server := ghttp.NewServer()
-	defer server.Close()
-
-	serverURL, err := url.Parse(server.URL())
-	g.Expect(err).ShouldNot(HaveOccurred())
-
-	server.AppendHandlers(
-		ghttp.CombineHandlers(
-			gh.VerifyRequest(http.MethodGet, "/users/self"),
-			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
-			gh.RespondWithJSONEncoded(http.StatusOK, models.Self{
-				AccountID: uuid.MustParse(accountId),
-			}),
-		),
-	)
-	// init testing http client
-	cli, err := NewClient(
-		true,
-		WithHostURL(serverURL),
-		WithHTTPClient(&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true, //nolint:gosec //No
-				},
-			},
-		}),
-		WithPersonalAccessToken(personalAccessToken),
-	)
-	g.Expect(err).ShouldNot(HaveOccurred())
+	tearDownTest := setupTest(t)
+	defer tearDownTest(t)
 
 	// mock testing response
 	server.AppendHandlers(
@@ -143,4 +137,44 @@ func TestListForbidden(t *testing.T) {
 	// test results
 	g.Expect(err).ShouldNot(BeNil())
 	g.Expect(data).Should(BeNil())
+}
+
+func TestCreateUserSuccessfully(t *testing.T) {
+	tearDownTest := setupTest(t)
+	defer tearDownTest(t)
+
+	result := userCreateResponse
+
+	server.AppendHandlers(
+		ghttp.CombineHandlers(
+			gh.VerifyRequest(http.MethodPost, fmt.Sprintf("/accounts/%s/users", accountId)),
+			gh.VerifyHeaderKV("Authorization", "Bearer "+personalAccessToken), //nolint
+			gh.RespondWithJSONEncoded(http.StatusOK, userCreateResponse),
+		),
+	)
+
+	data, err := cli.CreateUser(
+		context.Background(),
+		models.CreateUser{
+			Name:  "name",
+			Email: "email@gmail.com",
+		},
+	)
+
+	g.Expect(err).ShouldNot(HaveOccurred())
+	g.Expect(*data).Should(Equal(result))
+}
+
+func TestCreateUserInvalidPayload(t *testing.T) {
+	tearDownTest := setupTest(t)
+	defer tearDownTest(t)
+
+	var err error
+	_, err = cli.CreateUser(
+		context.Background(),
+		models.CreateUser{
+			Name: "name",
+		},
+	)
+	g.Expect(err).Should(HaveOccurred())
 }
